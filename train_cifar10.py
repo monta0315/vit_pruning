@@ -21,7 +21,7 @@ parser.add_argument('--aug', action='store_true', help='add image augumentations
 parser.add_argument('--mixup', action='store_true', help='add mixup augumentations')
 parser.add_argument('--net', default='vit')
 parser.add_argument('--bs', default='64')
-parser.add_argument('--n_epochs', type=int, default='100')
+parser.add_argument('--n_epochs', type=int, default='10')
 parser.add_argument('--patch', default='4', type=int)
 parser.add_argument('--cos', action='store_true', help='Train with cosine annealing scheduling')
 args = parser.parse_args()
@@ -34,9 +34,11 @@ if args.aug:
 bs = int(args.bs)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+best_acc = 0
+start_epoch = 0
 
 print("==> Preparing data..")
-transform_train = transforms.compose([
+transform_train = transforms.Compose([
     transforms.RandomCrop(32,padding=4),
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
@@ -54,7 +56,7 @@ trainset = torchvision.datasets.CIFAR10(root="data",train=True,download=True,tra
 trainloader = torch.utils.data.DataLoader(trainset,batch_size=bs,shuffle=True,num_workers=8)
 
 testset = torchvision.datasets.CIFAR10(root="data",train=False,download=True,transform=transform_test)
-testloader = torch.utils.data.Dataloader(testset,batch_size=100,shuffle=False,num_workers=8)
+testloader = torch.utils.data.DataLoader(testset,batch_size=100,shuffle=False,num_workers=8)
 
 # declare Cifar10 Classes
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
@@ -100,7 +102,13 @@ def sparce_selection():
     s = 1e-4
     for m in net.modules():
         if isinstance(m,channel_selection):
-            m.indexes.grad.data.add_(s*torch.sig(m.indexes.data)) # L1正則化？
+            '''
+                >>> a
+                tensor([ 0.7000, -1.2000,  0.0000,  2.3000])
+                >>> torch.sign(a)
+                tensor([ 1., -1.,  0.,  1.])
+            '''
+            m.indexes.grad.data.add_(s*torch.sign(m.indexes.data)) # 1か0か-1に丸め込んでる
 
 def train(epoch):
     print('\nEpoch: %d' % epoch)
@@ -118,7 +126,7 @@ def train(epoch):
         optimizer.step()
 
         train_loss += loss.item()
-        _, predicted = outputs.maz(1)
+        _, predicted = outputs.max(1)
         total += targets.size(0)
         correct += predicted.eq(targets).sum().item()
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
