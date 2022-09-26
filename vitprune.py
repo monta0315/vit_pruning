@@ -50,7 +50,6 @@ for m in model.modules():
 bn = torch.zeros(total)
 index = 0
 for m in model.modules():
-    print(m)
     if isinstance(m,channel_selection):
         size = m.indexes.data.shape[0]
         bn[index:(index+size)] = m.indexes.data.abs().clone()
