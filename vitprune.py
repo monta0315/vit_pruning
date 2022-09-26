@@ -5,13 +5,13 @@ import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as transforms
 
-from models.vit import ViT, channel_selection
-from models.vit_slim import ViT_slim
+from models.vit import ViT
+from models.vit_slim import ViT_slim, channel_selection
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 cudnn.benchmark = True
 
-model = ViT(
+model = ViT_slim(
     image_size = 32,
     patch_size = 4,
     num_classes = 10,
@@ -24,7 +24,7 @@ model = ViT(
     )
 model = model.to(device)
 
-model_path = "checkpoint/vit-4-ckpt.t7"
+model_path = "checkpoint/prune-4-ckpt.t7"
 print("=> loading checkpoint '{}'".format(model_path))
 checkpoint = torch.load(model_path)
 start_epoch = checkpoint['epoch']
@@ -43,6 +43,7 @@ for m in model.modules():
         total += m.indexes.data.shape[0]
 
 
+
 bn = torch.zeros(total)
 index = 0
 for m in model.modules():
@@ -57,15 +58,14 @@ y,i = torch.sort(bn)
 thre_index = int(total*percent)
 thre = y[thre_index]
 
-print("thre",thre)
 
 pruned = 0
 cfg = []
 cfg_mask = []
 for k,m in enumerate(model.modules()):
     if isinstance(m,channel_selection):
-        print("what's k",k)
-        print("m",m)
+        #print("what's k",k)
+        #print("m",m)
         if k in [16,40,64,88,112,136]:
             '''
                 weight_copy_tensorに対して、threよりも大きいweightを真偽値で出力する
@@ -97,7 +97,7 @@ for k,m in enumerate(model.modules()):
 
 pruned_ratio = pruned/total
 print('Pre-processing Successful!')
-print(cfg)
+print("cfg",cfg)
 
 
 def test(model):

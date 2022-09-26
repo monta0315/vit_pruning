@@ -10,6 +10,7 @@ import torchvision
 import torchvision.transforms as transforms
 
 from models.vit import ViT, channel_selection
+from models.vit_slim import ViT_slim
 from utils import progress_bar
 
 # parsers
@@ -65,17 +66,31 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship'
 
 print("==> Building model..")
 
-net = ViT(
-    image_size = 32,
-    patch_size=args.patch,
-    num_classes=10,
-    dim=512,
-    depth=6,
-    heads=8,
-    mlp_dim=512,
-    dropout=0.1,
-    emb_dropout=0.1
-)
+if args.net == "prune":
+    print("prunennnnnnnnnnnn")
+    net = ViT_slim(
+        image_size = 32,
+        patch_size=args.patch,
+        num_classes=10,
+        dim=512,
+        depth=6,
+        heads=8,
+        mlp_dim=512,
+        dropout=0.1,
+        emb_dropout=0.1
+    )
+else:
+    net = ViT(
+        image_size = 32,
+        patch_size=args.patch,
+        num_classes=10,
+        dim=512,
+        depth=6,
+        heads=8,
+        mlp_dim=512,
+        dropout=0.1,
+        emb_dropout=0.1
+    )
 
 net = net.to(device)
 
