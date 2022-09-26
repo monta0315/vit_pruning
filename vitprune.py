@@ -1,3 +1,4 @@
+import argparse
 from random import shuffle
 
 import torch
@@ -11,20 +12,40 @@ from models.vit_slim import ViT_slim, channel_selection
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 cudnn.benchmark = True
 
-model = ViT_slim(
-    image_size = 32,
-    patch_size = 4,
-    num_classes = 10,
-    dim = 512,                  # 512
-    depth = 6,
-    heads = 8,
-    mlp_dim = 512,
-    dropout = 0.1,
-    emb_dropout = 0.1
-    )
-model = model.to(device)
+parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
+parser.add_argument('--prune', default=0)
+args = parser.parse_args()
 
-model_path = "checkpoint/prune-4-ckpt.t7"
+if args.prune:
+    model = ViT_slim(
+        image_size = 32,
+        patch_size = 4,
+        num_classes = 10,
+        dim = 512,                  # 512
+        depth = 6,
+        heads = 8,
+        mlp_dim = 512,
+        dropout = 0.1,
+        emb_dropout = 0.1
+        )
+    model_path = "checkpoint/prune-4-ckpt.t7"
+else:
+    model = ViT(
+        image_size = 32,
+        patch_size = 4,
+        num_classes = 10,
+        dim = 512,                  # 512
+        depth = 6,
+        heads = 8,
+        mlp_dim = 512,
+        dropout = 0.1,
+        emb_dropout = 0.1
+        )
+    model_path = "checkpoint/vit-4-ckpt.t7"
+
+
+
+model = model.to(device)
 print("=> loading checkpoint '{}'".format(model_path))
 checkpoint = torch.load(model_path)
 start_epoch = checkpoint['epoch']
