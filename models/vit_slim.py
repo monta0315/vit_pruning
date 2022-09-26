@@ -32,9 +32,9 @@ class channel_selection(nn.Module):
         """
         """
             torch.mul
-            >>> a
+            a
             tensor([ 0.2015, -0.4255,  2.6087])
-            >>> torch.mul(a, 100)
+            torch.mul(a, 100)
             tensor([  20.1494,  -42.5491,  260.8663])
         """
         output = input_tensor.mul(self.indexes)

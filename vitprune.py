@@ -1,4 +1,3 @@
-import argparse
 from random import shuffle
 
 import torch
@@ -6,42 +5,25 @@ import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as transforms
 
-from models.vit import ViT
-from models.vit_slim import ViT_slim, channel_selection
+from models.vit import ViT, channel_selection
+from models.vit_slim import ViT_slim
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 cudnn.benchmark = True
 
-parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
-parser.add_argument('--prune', default=0)
-args = parser.parse_args()
 
-if args.prune:
-    model = ViT_slim(
-        image_size = 32,
-        patch_size = 4,
-        num_classes = 10,
-        dim = 512,                  # 512
-        depth = 6,
-        heads = 8,
-        mlp_dim = 512,
-        dropout = 0.1,
-        emb_dropout = 0.1
-        )
-    model_path = "checkpoint/prune-4-ckpt.t7"
-else:
-    model = ViT(
-        image_size = 32,
-        patch_size = 4,
-        num_classes = 10,
-        dim = 512,                  # 512
-        depth = 6,
-        heads = 8,
-        mlp_dim = 512,
-        dropout = 0.1,
-        emb_dropout = 0.1
-        )
-    model_path = "checkpoint/vit-4-ckpt.t7"
+model = ViT(
+    image_size = 32,
+    patch_size = 4,
+    num_classes = 10,
+    dim = 512,                  # 512
+    depth = 6,
+    heads = 8,
+    mlp_dim = 512,
+    dropout = 0.1,
+    emb_dropout = 0.1
+    )
+model_path = "checkpoint/vit-4-ckpt.t7"
 
 
 
@@ -68,6 +50,7 @@ for m in model.modules():
 bn = torch.zeros(total)
 index = 0
 for m in model.modules():
+    print(m)
     if isinstance(m,channel_selection):
         size = m.indexes.data.shape[0]
         bn[index:(index+size)] = m.indexes.data.abs().clone()
@@ -161,5 +144,7 @@ newmodel = ViT_slim(image_size = 32,
     dropout = 0.1,
     emb_dropout = 0.1,
     cfg=cfg_prune)
+
+
 
 newmodel.to(device)
