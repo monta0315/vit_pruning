@@ -1,5 +1,6 @@
 from random import shuffle
 
+import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 import torchvision
@@ -103,7 +104,7 @@ print('Pre-processing Successful!')
 print("cfg",cfg)
 
 
-def test(model):
+def test(model,pruned=False,cfg=None):
     transform_test = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
@@ -123,7 +124,14 @@ def test(model):
             correct += predicted.eq(targets).sum().item()
         
         print('Acc: %.3f%% (%d/%d)' % (100.*correct/total, correct, total))
-
+    if pruned:
+        state = {
+            'net':model.state_dict(),
+            'acc':100.*correct/total,
+            'epoch':checkpoint['epoch'],
+            'cfg':cfg
+        }
+        torch.save(state, './checkpoint/self-pruned''-{}-ckpt.t7'.format(4))
 
 test(model)
 cfg_prune = []
@@ -145,5 +153,51 @@ newmodel = ViT_slim(image_size = 32,
     cfg=cfg_prune)
 
 
-
 newmodel.to(device)
+newmodel_dict = newmodel.state_dict().copy()
+
+i = 0
+newdict = {}
+for k,v in model.state_dict().items():
+    if 'net1.0.weight' in k:
+        # print(k)
+        # print(v.size())
+        # print('----------')
+        idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[i].cpu().numpy())))
+        newdict[k] = v[idx.tolist()].clone()
+    elif 'net1.0.bias' in k:
+        # print(k)
+        # print(v.size())
+        # print('----------')
+        idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[i].cpu().numpy())))
+        newdict[k] = v[idx.tolist()].clone()
+    elif 'to_q' in k or 'to_k' in k or 'to_v' in k:
+        # print(k)
+        # print(v.size())
+        # print('----------')
+        idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[i].cpu().numpy())))
+        newdict[k] = v[idx.tolist()].clone()
+    elif 'net2.0.weight' in k:
+        # print(k)
+        # print(v.size())
+        # print('----------')
+        idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[i].cpu().numpy())))
+        newdict[k] = v[:,idx.tolist()].clone()
+        i = i + 1
+    elif 'to_out.0.weight' in k:
+        # print(k)
+        # print(v.size())
+        # print('----------')
+        idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[i].cpu().numpy())))
+        newdict[k] = v[:,idx.tolist()].clone()
+        i = i + 1
+
+    elif k in newmodel.state_dict():
+        newdict[k] = v
+
+newmodel_dict.update(newdict)
+newmodel.load_state_dict(newmodel_dict)
+
+#torch.save(newmodel.state_dict(), 'pruned.pth')
+print('after pruning: ', end=' ')
+test(newmodel,True,cfg_prune)
