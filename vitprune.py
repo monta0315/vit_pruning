@@ -24,7 +24,9 @@ model = ViT(
     dropout = 0.1,
     emb_dropout = 0.1
     )
-model_path = "checkpoint/vit-4-ckpt.t7"
+
+name = "vit-CIFAR10-100epochs-1024bs"
+model_path = f"checkpoint/{name}.pth"
 
 
 
@@ -105,6 +107,7 @@ print("cfg",cfg)
 
 
 def test(model,pruned=False,cfg=None):
+    global name
     transform_test = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
@@ -131,7 +134,8 @@ def test(model,pruned=False,cfg=None):
             'epoch':checkpoint['epoch'],
             'cfg':cfg
         }
-        torch.save(state, './checkpoint/self-pruned''-{}-ckpt.t7'.format(4))
+        torch.save(state, f'./checkpoint/self-pruned-{name}.pth'.format(4))
+        print("Complete!!!!!!!!!!!!!!!")
 
 test(model)
 cfg_prune = []

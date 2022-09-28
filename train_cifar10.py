@@ -22,7 +22,7 @@ parser.add_argument('--aug', action='store_true', help='add image augumentations
 parser.add_argument('--mixup', action='store_true', help='add mixup augumentations')
 parser.add_argument('--net', default='vit')
 parser.add_argument('--bs', default='64')
-parser.add_argument('--n_epochs', type=int, default='10')
+parser.add_argument('--n_epochs', type=int, default='100')
 parser.add_argument('--patch', default='4', type=int)
 parser.add_argument('--cos', action='store_true', help='Train with cosine annealing scheduling')
 args = parser.parse_args()
@@ -51,6 +51,9 @@ transform_test = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
 
+if not os.path.isdir('data'):
+        os.makedirs('data')
+
 # download dataset
 trainset = torchvision.datasets.CIFAR10(root="data",train=True,download=True,transform=transform_train)
 # define dataloader
@@ -66,21 +69,7 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship'
 
 print("==> Building model..")
 
-if args.net == "prune":
-    print("prunennnnnnnnnnnn")
-    net = ViT_slim(
-        image_size = 32,
-        patch_size=args.patch,
-        num_classes=10,
-        dim=512,
-        depth=6,
-        heads=8,
-        mlp_dim=512,
-        dropout=0.1,
-        emb_dropout=0.1
-    )
-else:
-    net = ViT(
+net = ViT(
         image_size = 32,
         patch_size=args.patch,
         num_classes=10,
@@ -93,6 +82,7 @@ else:
     )
 
 net = net.to(device)
+
 
 
 # if use pretraind model
@@ -187,7 +177,7 @@ def test(epoch):
         if not os.path.isdir('checkpoint'):
             os.makedirs('checkpoint')
         
-        torch.save(state, './checkpoint/'+args.net+'-{}-ckpt.t7'.format(args.patch))
+        torch.save(state, f"./checkpoint/{args.net}-CIFAR10-{args.n_epochs}epochs-{args.bs}bs.pth".format(args.patch))
         best_acc = acc
 
     os.makedirs("log", exist_ok=True)
