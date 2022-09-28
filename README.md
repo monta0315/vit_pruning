@@ -4,31 +4,35 @@
 
 CIFAR10
 
-# Create Evironment
-- Use Venv
+# Create Environment
+- Use venv
 
  ```
     python3 -m venv --system-site-packages ./ENVNAME
  ```
-- Install Package By pip
+- Install packages by pip
 
  ```
     pip3 install -r requirements.txt
  ```
 
-# Train ViT Model
+# Train 
 - Train Base Model
 
  ```
     python3 train_cifar10.py 
  ```
-- Prune Base Model
+ 
+# Prune
+
+- Prune BaseModel and Create PrunedModel
  ```
     python3 vitprune.py
  ```
 
-- Compare Both Model
+# Evaluate
 
+- Compare Both Model 
  ```
     python3 evaluate.py
  ```
