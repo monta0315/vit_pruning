@@ -11,7 +11,7 @@ import torchvision.transforms as transforms
 
 from models.vit import ViT, channel_selection
 from models.vit_slim import ViT_slim
-from utils import progress_bar
+from utils.utils import progress_bar
 
 # parsers
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
