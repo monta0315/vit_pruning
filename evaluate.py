@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import requests
 import torch
-import torchvision
 import torchvision.transforms as transforms
 from PIL import Image
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
@@ -65,10 +64,29 @@ class Evaluate:
             columns=[f'{inference_times} Inference','Ave Inference', 'Reduction'])], axis=1)
         
         print(df)
-        print("\n", end="") 
+        print("\n", end="")
+
+    def comparing_accuracy(self):
+        model_path,pruned_model_path = self.model_path,self.pruned_model_path
+
+        checkpoint = torch.load(model_path)
+        pruned_checkpoint = torch.load(pruned_model_path)
+
+        original_acc = checkpoint["acc"]
+        pruned_acc = pruned_checkpoint["acc"]
+
+        df = pd.DataFrame({'Model':["original model","pruned model"]})
+        df = pd.concat([df,pd.DataFrame([
+            [original_acc,"0%"],[pruned_acc,"{:.3f}%".format(pruned_acc-original_acc)]
+        ],
+        columns=["Accuracy", "Reduction"])],axis=1)
+
+        print(df)
+        print("\n", end="")
     
     def check_model_size(self):
         model_path,pruned_model_path = self.model_path,self.pruned_model_path
+        model,pruned_model = self.model,self.pruned_model
 
         with zipfile.ZipFile(f'{model_path}.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
             zf.write(model_path) 
@@ -82,25 +100,27 @@ class Evaluate:
 
         pruned_model_size = os.path.getsize(f'{pruned_model_path}.zip')
 
-        print(f'Size of the the Original Model: {original_model_size:,} bytes')
-        print(f'Size of the the Pruned Model: {pruned_model_size:,} bytes')
-        print(f'Compressed Percentage: {(100 - (pruned_model_size / original_model_size) * 100):.2f}%')
-        print("\n", end="") 
-    
-    def total_params_count(self):
-        model,pruned_model = self.model,self.pruned_model
         total_params_count = sum(param.numel() for param in model.parameters() if param.requires_grad)
         pruned_model_params_count = sum(param.numel() for param in pruned_model.parameters() if param.requires_grad)
-        print(f'Original Model parameter count: {total_params_count:,}')
-        print(f'Pruned Model parameter count: {pruned_model_params_count:,}')
-        print(f'Compressed Percentage: {(100 - (pruned_model_params_count / total_params_count) * 100):.2f}%')
-        print("\n", end="") 
+
+        df = pd.DataFrame({'Model':["original model","pruned model"]})
+        df = pd.concat([df,pd.DataFrame([
+            [f'{original_model_size:,} bytes',"0%",total_params_count,"0%"],
+            [f'{pruned_model_size:,} bytes',f"{(100 - (pruned_model_size / original_model_size) * 100):.2f}%",
+             pruned_model_params_count,f'{(100 - (pruned_model_params_count / total_params_count) * 100):.2f}%'],
+        ],
+        columns=["Size","SizeReduction", "Params","ParamsReduction"])],axis=1)
+
+        print(df)
+        print("\n", end="")
+
 
 
 
 e = Evaluate()
 print("==> Comparing inference speed..")
-e.comparing_inference_speed(1000)
+e.comparing_inference_speed(100)
+print("==> Comparing accuracy..")
+e.comparing_accuracy()
 print("==> Comparing model size..")
 e.check_model_size()
-e.total_params_count()
