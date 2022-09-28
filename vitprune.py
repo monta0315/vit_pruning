@@ -6,8 +6,10 @@ import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as transforms
 
-from models.vit import ViT, channel_selection
-from models.vit_slim import ViT_slim
+#from models.base_to_select import ViT, channel_selection
+#from models.base_to_select_slim import ViT_slim
+from models.vit_channel_select import ViT, channel_selection
+from models.vit_channel_select_slim import ViT_slim
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 cudnn.benchmark = True
@@ -25,7 +27,7 @@ model = ViT(
     emb_dropout = 0.1
     )
 
-name = "vit-CIFAR10-100epochs-1024bs"
+name = "vit-CIFAR10-5epochs-64bs"
 model_path = f"checkpoint/{name}.pth"
 
 

@@ -1,6 +1,6 @@
 import torch
-from models.vit import ViT
-from models.vit_slim import ViT_slim
+from models.vit_channel_select import ViT
+from models.vit_channel_select_slim import ViT_slim
 
 
 class Utility():

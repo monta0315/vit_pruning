@@ -9,8 +9,9 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 
-from models.vit import ViT, channel_selection
-from models.vit_slim import ViT_slim
+#from models.vit_channel_select import ViT, channel_selection
+from models.base_to_select import ViT, channel_selection
+from models.vit_channel_select_slim import ViT_slim
 from utils.utils import progress_bar
 
 # parsers
