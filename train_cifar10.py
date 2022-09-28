@@ -9,7 +9,7 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 
-from models.vit import ViT, channel_selection
+from models.vit_select import ViT, channel_selection
 from models.vit_slim import ViT_slim
 from utils.utils import progress_bar
 
@@ -26,6 +26,7 @@ parser.add_argument('--n_epochs', type=int, default='100')
 parser.add_argument('--patch', default='4', type=int)
 parser.add_argument('--cos', action='store_true', help='Train with cosine annealing scheduling')
 args = parser.parse_args()
+
 
 if args.cos:
     from warmup_scheduler import GradualWarmupScheduler

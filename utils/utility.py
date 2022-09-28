@@ -1,10 +1,10 @@
 import torch
-from models.vit import ViT
+from models.vit_select import ViT
 from models.vit_slim import ViT_slim
 
 
 class Utility():
-    def __init__(self,name= "vit-CIFAR10-100epochs-1024bs"):
+    def __init__(self,name= "vit-CIFAR10-100epochs-256bs"):
         self.name = name
         self.model_path = f"checkpoint/{name}.pth"
         self.pruned_model_path = f"checkpoint/self-pruned-{name}.pth"
