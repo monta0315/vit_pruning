@@ -13,6 +13,7 @@ args = parser.parse_args()
 
 from models.vit_select import ViT, channel_selection
 from models.vit_slim import ViT_slim
+from utils.utility import Utility
 
 """
     channel selection layerのinputのindex
@@ -36,7 +37,9 @@ model = ViT(
     emb_dropout = 0.1
     )
 
-name = "vit-CIFAR10-100epochs-256bs"
+u = Utility()
+
+name = u.get_name()
 model_path = f"checkpoint/{name}.pth"
 
 

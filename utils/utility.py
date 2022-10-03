@@ -48,3 +48,6 @@ class Utility():
     
     def get_model_path(self):
         return self.model_path,self.pruned_model_path
+    
+    def get_name(self):
+        return self.name

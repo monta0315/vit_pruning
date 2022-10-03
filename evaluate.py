@@ -59,7 +59,7 @@ class Evaluate:
         df = pd.DataFrame({'Model': ['original model','pruned model']})
         df = pd.concat([df, pd.DataFrame([
             ["{:.2f}ms".format((prof1.self_cpu_time_total)/1000),"{:.2f}ms".format((prof1.self_cpu_time_total)/inference_times/1000), "0%"],
-            ["{:.2f}ms".format((prof1.self_cpu_time_total)/1000),"{:.2f}ms".format((prof2.self_cpu_time_total)/inference_times/1000),
+            ["{:.2f}ms".format((prof2.self_cpu_time_total)/1000),"{:.2f}ms".format((prof2.self_cpu_time_total)/inference_times/1000),
             "{:.2f}%".format((prof1.self_cpu_time_total-prof2.self_cpu_time_total)/prof1.self_cpu_time_total*100)]],
             columns=[f'{inference_times} Inference','Ave Inference', 'Reduction'])], axis=1)
         
