@@ -1,6 +1,7 @@
 import torch
-from models.vit_select import ViT
-from models.vit_slim import ViT_slim
+#from models.slim_split import ViT_slim
+from models.attn_importance_split_slim import ViT as ViT_slim
+from models.select_split import ViT
 
 
 class Utility():
@@ -20,7 +21,8 @@ class Utility():
             heads = 8,
             mlp_dim = 512,
             dropout = 0.1,
-            emb_dropout = 0.1
+            emb_dropout = 0.1,
+            qkv_bias=True
             )
 
         model_path = self.model_path
@@ -40,7 +42,8 @@ class Utility():
             mlp_dim = 512,
             dropout = 0.1,
             emb_dropout = 0.1,
-            cfg=pruned_checkpoint['cfg']
+            cfg=pruned_checkpoint['cfg'],
+            qkv_bias=True
             )
         pruned_model.load_state_dict(pruned_checkpoint['net'])
 
