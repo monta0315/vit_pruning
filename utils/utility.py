@@ -4,7 +4,7 @@ from models.vit_slim import ViT_slim
 
 
 class Utility():
-    def __init__(self,name= "vit-CIFAR10-1epochs-64bs"):
+    def __init__(self,name= "vit-CIFAR10-5epochs-64bs"):
         self.name = name
         self.model_path = f"checkpoint/{name}.pth"
         self.pruned_model_path = f"checkpoint/self-pruned-{name}.pth"

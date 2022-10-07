@@ -110,6 +110,7 @@ net = ViT(
     mlp_dim=512,
     dropout=0.1,
     emb_dropout=0.1,
+    qkv_bias=True
 )
 
 net = net.to(device)
