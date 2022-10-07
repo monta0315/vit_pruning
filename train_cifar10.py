@@ -10,9 +10,10 @@ import torchvision
 import torchvision.transforms as transforms
 
 #from models.slim_split import ViT_slim as ViT
-#from models.slim_split import channel_selection
-from models.select_split import ViT, channel_selection
+from models.slim_split import channel_selection
+#from models.select_split import ViT, channel_selection
 from utils.utils import progress_bar
+from warehouse.vit import ViT
 
 # parsers
 parser = argparse.ArgumentParser(description="PyTorch CIFAR10 Training")
@@ -110,7 +111,7 @@ net = ViT(
     mlp_dim=512,
     dropout=0.1,
     emb_dropout=0.1,
-    qkv_bias=True
+    #qkv_bias=True
 )
 
 net = net.to(device)

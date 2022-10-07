@@ -67,7 +67,7 @@ testloader = torch.utils.data.DataLoader(
 
 print("==> Resuming from checkpoint..")
 checkpoint = torch.load(base_path, map_location="cpu")
-teacher_model = ViT_slim(
+teacher_model = attn_ViT(
     image_size=32,
     patch_size=4,
     num_classes=10,
@@ -197,14 +197,15 @@ for delete_ind in candidate_index:
                     target = target.cuda(non_blocking=True)
 
                     # compute output
-                    output = net(images)
-                    score, predicted = output.max(1)
                     total += target.size(0)
-                    sample_correct += predicted.eq(target).sum().item()
+                    teacher_output = teacher_model(images)
+                    teacher_score, teacher_predicted = teacher_output.max(1)
+                    teacher_correct += teacher_predicted.eq(target).sum().item()
                     with torch.no_grad():
-                        teacher_output = teacher_model(images)
-                        teacher_score, teacher_predicted = teacher_output.max(1)
-                        teacher_correct += teacher_predicted.eq(target).sum().item()
+                        output = net(images)
+                        score, predicted = output.max(1)
+                        sample_correct += predicted.eq(target).sum().item()
+
 
             sample_acc = 100.0 * sample_correct / total
             teacher_acc = 100.0 * teacher_correct / total
