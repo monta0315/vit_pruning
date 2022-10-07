@@ -145,7 +145,7 @@ class Attention(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout, cfg, qkv_bias):
+    def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout=0.0, cfg=None, qkv_bias=False):
         super().__init__()
         self.layers = nn.ModuleList([])
         if cfg is not None:
@@ -164,7 +164,7 @@ class Transformer(nn.Module):
                                     qkv_bias=qkv_bias,
                                 ),
                             ),
-                            PreNorm(dim, FeedForward(dim, dim, dropout=dropout)),
+                            PreNorm(dim, FeedForward(dim, mlp_dim, dropout=dropout)),
                         ]
                     )
                 )
@@ -183,7 +183,7 @@ class Transformer(nn.Module):
                                     qkv_bias=qkv_bias,
                                 ),
                             ),
-                            PreNorm(dim, FeedForward(dim, dim, dropout=dropout)),
+                            PreNorm(dim, FeedForward(dim, mlp_dim, dropout=dropout)),
                         ]
                     )
                 )
@@ -206,13 +206,13 @@ class ViT_slim(nn.Module):
         depth,
         heads,
         mlp_dim,
-        cfg=None,
         pool="cls",
         channels=3,
         dim_head=64,
         dropout=0.0,
         emb_dropout=0.0,
-        qkv_bias=False
+        qkv_bias=False,
+        cfg=None,
     ):
         super().__init__()
         image_height, image_width = pair(image_size)

@@ -96,7 +96,8 @@ print("=> loaded teacher checkpoint")
 
 checkpoint = torch.load(base_path, map_location="cpu")
 candidate_index = range(checkpoint['cfg'][args.block_ind])
-print(checkpoint["cfg"])
+
+
 results1 = []
 results5 = []
 importance = []
@@ -227,7 +228,7 @@ if not os.path.isdir("importance"):
     os.makedirs("importances")
 
 with open(
-    "importance/kl5k/importance/test_base_vit_" + str(args.block_ind) + "_5k.txt", "w"
+    "importance/test_base_vit_" + str(args.block_ind) + "_5k.txt", "w"
 ) as f:
     for l, ind in importance:
         f.write(str(l) + str(ind) + "\n")

@@ -235,6 +235,7 @@ class ViT(nn.Module):
         super().__init__()
         image_height, image_width = pair(image_size)
         patch_height, patch_width = pair(patch_size)
+        print("reduce",reduce,"ind",ind)
 
 
         assert (
