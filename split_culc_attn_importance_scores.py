@@ -225,11 +225,11 @@ for delete_ind in candidate_index:
         end = time.time()
 
         importance.append([loss, delete_ind])
-if not os.path.isdir("importance"):
+if not os.path.isdir("importances"):
     os.makedirs("importances")
 
 with open(
-    "importance/test_base_vit_" + str(args.block_ind) + "_5k.txt", "w"
+    "importances/test_base_vit_" + str(args.block_ind) + "_5k.txt", "w"
 ) as f:
     for l, ind in importance:
         f.write(str(l) + str(ind) + "\n")

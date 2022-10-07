@@ -186,6 +186,7 @@ class Transformer(nn.Module):
                                     dim,
                                     dim,
                                     heads=heads,
+                                    dim_head=dim_head,
                                     dropout=dropout,
                                     qkv_bias=qkv_bias,
                                 ),
