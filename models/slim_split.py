@@ -95,7 +95,7 @@ class FeedForward(nn.Module):
 
 
 class Attention(nn.Module):
-    def __init__(self, dim, dim1, heads=8, dropout=0.0, qkv_bias=False):
+    def __init__(self, dim, dim1, heads=8,dim_head=64, dropout=0.0, qkv_bias=False):
         super().__init__()
         self.heads = heads
         self.scale = dim1 ** -0.5
@@ -148,7 +148,6 @@ class Transformer(nn.Module):
     def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout, cfg, qkv_bias):
         super().__init__()
         self.layers = nn.ModuleList([])
-        print(cfg is not None)
         if cfg is not None:
             for num in cfg:
                 self.layers.append(
@@ -157,8 +156,9 @@ class Transformer(nn.Module):
                             PreNorm(
                                 dim,
                                 Attention(
-                                    dim,
-                                    num,
+                                    dim=dim,
+                                    dim1=num,
+                                    dim_head=dim_head,
                                     heads=heads,
                                     dropout=dropout,
                                     qkv_bias=qkv_bias,

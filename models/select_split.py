@@ -98,7 +98,7 @@ class Attention(nn.Module):
         self.attn_attend = nn.Softmax(dim=-1)
         self.attn_dropout = nn.Dropout(dropout)
 
-        #self.attn_to_qkv = nn.Linear(dim, inner_dim * 3, bias=qkv_bias)
+        # self.attn_to_qkv = nn.Linear(dim, inner_dim * 3, bias=qkv_bias)
         self.attn_to_q = nn.Linear(dim, inner_dim, bias=qkv_bias)
         self.attn_to_k = nn.Linear(dim, inner_dim, bias=qkv_bias)
         self.attn_to_v = nn.Linear(dim, inner_dim, bias=qkv_bias)
@@ -115,13 +115,13 @@ class Attention(nn.Module):
         b, n, _, h = *x.shape, self.heads
         q = self.attn_to_q(x)
         q = self.select1(q)
-        q = rearrange(q, 'b n (h d) -> b h n d', h = h)
+        q = rearrange(q, "b n (h d) -> b h n d", h=h)
         k = self.attn_to_k(x)
         k = self.select1(k)
-        k = rearrange(k, 'b n (h d) -> b h n d', h = h)
+        k = rearrange(k, "b n (h d) -> b h n d", h=h)
         v = self.attn_to_v(x)
         v = self.select1(v)
-        v = rearrange(v, 'b n (h d) -> b h n d', h = h)
+        v = rearrange(v, "b n (h d) -> b h n d", h=h)
 
         dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
         if mask is not None:
@@ -218,7 +218,13 @@ class ViT(nn.Module):
         self.dropout = nn.Dropout(emb_dropout)
 
         self.transformer = Transformer(
-            dim, depth, heads, dim_head, mlp_dim, dropout, qkv_bias
+            dim=dim,
+            depth=depth,
+            heads=heads,
+            dim_head=dim_head,
+            mlp_dim=mlp_dim,
+            dropout=dropout,
+            qkv_bias=qkv_bias,
         )
 
         self.pool = pool

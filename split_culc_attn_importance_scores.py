@@ -20,8 +20,8 @@ from torch.autograd import Variable
 from torch.cuda.amp import GradScaler as GradScaler
 from torch.cuda.amp import autocast as autocast
 
-from models.attn_importance_split import ViT as attn_ViT
-from models.slim_split import ViT_slim as ViT
+from models.attn_importance_split_slim import ViT as attn_ViT
+from models.slim_split import ViT_slim
 from utils.utils import AverageMeter, ProgressMeter, accuracy
 
 parser = argparse.ArgumentParser(description="PyTorch CIFAR10 Training")
@@ -35,7 +35,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-base_path = "checkpoint/self-pruned-vit-CIFAR10-1epochs-64bs.pth"
+base_path = "checkpoint/self-pruned-vit-CIFAR10-5epochs-64bs.pth"
 
 
 use_cuda = torch.cuda.is_available()
@@ -52,6 +52,11 @@ transform_test = transforms.Compose(
     ]
 )
 
+def debag(model):
+    for k,v in model.items():
+        print(k)
+        print(v.shape)
+
 
 testset = torchvision.datasets.CIFAR10(
     root="data", train=False, download=True, transform=transform_test
@@ -62,16 +67,17 @@ testloader = torch.utils.data.DataLoader(
 
 print("==> Resuming from checkpoint..")
 checkpoint = torch.load(base_path, map_location="cpu")
-teacher_model = ViT(
+teacher_model = ViT_slim(
     image_size=32,
-    qkv_bias=True,
     patch_size=4,
+    num_classes=10,
     dim=512,
     depth=6,
     heads=8,
     mlp_dim=512,
     dropout=0.1,
-    num_classes=10,
+    qkv_bias=True,
+    cfg=checkpoint["cfg"]
 )
 model_dict = teacher_model.state_dict()
 new_dict = {}
@@ -89,7 +95,8 @@ teacher_model = torch.nn.DataParallel(teacher_model)
 print("=> loaded teacher checkpoint")
 
 checkpoint = torch.load(base_path, map_location="cpu")
-candidate_index = range(512)
+candidate_index = range(checkpoint['cfg'][args.block_ind])
+print(checkpoint["cfg"])
 results1 = []
 results5 = []
 importance = []
@@ -105,12 +112,14 @@ for delete_ind in candidate_index:
         mlp_dim=512,
         reduce=delete_ind,
         ind=args.block_ind,
+        cfg=checkpoint["cfg"]
     )
 
     net.cuda()
     net = torch.nn.DataParallel(net)
 
     model_dict = net.state_dict()
+
 
     """
         ここまでattn層勝手に追加されてない
@@ -136,18 +145,15 @@ for delete_ind in candidate_index:
             # print(new_v.shape)
             new_dict["module." + k] = new_v
         elif str(args.block_ind) + ".0.fn" + ".attn_to_q.weight" in k:
-            new_index = [torch.arange(v.size(1)) != delete_ind]
-            new_v = v[new_index, :]
+            new_v = v[torch.arange(v.size(0)) != delete_ind, :]
             # print(new_v.shape)
             new_dict["module." + k] = new_v
         elif str(args.block_ind) + ".0.fn" + ".attn_to_k.weight" in k:
-            new_index = [torch.arange(v.size(1)) != delete_ind]
-            new_v = v[new_index, :]
+            new_v = v[torch.arange(v.size(0)) != delete_ind, :]
             # print(new_v.shape)
             new_dict["module." + k] = new_v
         elif str(args.block_ind) + ".0.fn" + ".attn_to_v.weight" in k:
-            new_index = [torch.arange(v.size(1)) != delete_ind]
-            new_v = v[new_index, :]
+            new_v = v[torch.arange(v.size(0)) != delete_ind, :]
             # print(new_v.shape)
             new_dict["module." + k] = new_v
         elif str(args.block_ind) + ".0.fn" + ".attn_to_out.0.weight" in k:
@@ -225,3 +231,5 @@ with open(
 ) as f:
     for l, ind in importance:
         f.write(str(l) + str(ind) + "\n")
+
+
