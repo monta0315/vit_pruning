@@ -9,9 +9,9 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 
-from models.slim_split import ViT_slim as ViT
-from models.slim_split import channel_selection
-# from models.vit import ViT, channel_selection
+#from models.slim_split import ViT_slim as ViT
+#from models.slim_split import channel_selection
+from models.select_split import ViT, channel_selection
 from utils.utils import progress_bar
 
 # parsers
@@ -110,7 +110,6 @@ net = ViT(
     mlp_dim=512,
     dropout=0.1,
     emb_dropout=0.1,
-    cfg = [19, 41, 63, 85, 107, 129]
 )
 
 net = net.to(device)
