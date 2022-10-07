@@ -100,7 +100,10 @@ class Attention(nn.Module):
         self.heads = heads
         self.scale = dim1 ** -0.5
 
-        self.attend = nn.Softmax(dim=-1)
+        project_out = not (heads == 1 and dim_head == dim)
+
+        self.attn_attend = nn.Softmax(dim=-1)
+        self.attn_dropout = nn.Dropout(dropout)
 
         """
             刈り込みのためにまとめていたqkvを分割する
@@ -109,9 +112,13 @@ class Attention(nn.Module):
         self.attn_to_q = nn.Linear(dim, dim1, bias=qkv_bias)
         self.attn_to_k = nn.Linear(dim, dim1, bias=qkv_bias)
         self.attn_to_v = nn.Linear(dim, dim1, bias=qkv_bias)
-        self.attn_dropout = nn.Dropout(dropout)
-        self.attn_to_out = nn.Sequential(nn.Linear(dim1, dim), nn.Dropout(dropout))
-        self.attn_attend = nn.Softmax(dim=-1)
+        
+        self.attn_to_out = (
+            nn.Sequential(nn.Linear(dim1, dim), nn.Dropout(dropout))
+            if project_out
+            else nn.Identity()
+        )
+
 
         # self.select1 = channel_selection(dim)
 
@@ -179,6 +186,7 @@ class Transformer(nn.Module):
                                     dim,
                                     dim,
                                     heads=heads,
+                                    dim_head=dim_head,
                                     dropout=dropout,
                                     qkv_bias=qkv_bias,
                                 ),
