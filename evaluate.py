@@ -11,7 +11,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
-from utils.utility import Utility
+from utility import Utility
 from utils.utils import progress_bar
 
 

@@ -13,7 +13,7 @@ args = parser.parse_args()
 
 from models.select_split import ViT, channel_selection
 from models.slim_split import ViT_slim
-from utils.utility import Utility
+from utility import Utility
 
 """
     channel selection layerのinputのindex
@@ -41,7 +41,7 @@ model = ViT(
 u = Utility()
 
 name = u.get_name()
-model_path = f"checkpoint/{name}.pth"
+model_path = f"ch_sele_checkpoint/{name}.pth"
 
 
 model = model.to(device)
@@ -162,7 +162,7 @@ def test(model, pruned=False, cfg=None):
             "epoch": checkpoint["epoch"],
             "cfg": cfg,
         }
-        torch.save(state, f"./checkpoint/self-pruned-{name}.pth".format(4))
+        torch.save(state, f"./pruned1_checkpoint/self-pruned-{name}.pth".format(4))
         print("Complete!!!!!!!!!!!!!!!")
 
 

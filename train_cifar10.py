@@ -32,6 +32,7 @@ parser.add_argument("--patch", default="4", type=int)
 parser.add_argument(
     "--cos", action="store_true", help="Train with cosine annealing scheduling"
 )
+
 args = parser.parse_args()
 
 
@@ -223,7 +224,7 @@ def test(epoch):
 
         torch.save(
             state,
-            f"./checkpoint/{args.net}-CIFAR10-{args.n_epochs}epochs-{args.bs}bs.pth".format(
+            f"./ch_sele_checkpoint/{args.net}-CIFAR10-{args.n_epochs}epochs-{args.bs}bs.pth".format(
                 args.patch
             ),
         )
