@@ -111,7 +111,7 @@ net = ViT(
     mlp_dim=512,
     dropout=0.1,
     emb_dropout=0.1,
-    #qkv_bias=True
+    qkv_bias=True
 )
 
 net = net.to(device)
@@ -219,12 +219,12 @@ def test(epoch):
         print("Saving")
         state = {"net": net.state_dict(), "acc": acc, "epoch": epoch}
 
-        if not os.path.isdir("checkpoint"):
-            os.makedirs("checkpoint")
+        if not os.path.isdir("ch_sele_checkpoints"):
+            os.makedirs("ch_sele_checkpoints")
 
         torch.save(
             state,
-            f"./ch_sele_checkpoint/{args.net}-CIFAR10-{args.n_epochs}epochs-{args.bs}bs.pth".format(
+            f"./ch_sele_checkpoints/{args.net}-CIFAR10-{args.n_epochs}epochs-{args.bs}bs.pth".format(
                 args.patch
             ),
         )
