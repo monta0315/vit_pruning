@@ -9,11 +9,10 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 
+from models.select_split import ViT, channel_selection
 #from models.slim_split import ViT_slim as ViT
 from models.slim_split import channel_selection
-#from models.select_split import ViT, channel_selection
 from utils.utils import progress_bar
-from warehouse.vit import ViT
 
 # parsers
 parser = argparse.ArgumentParser(description="PyTorch CIFAR10 Training")
