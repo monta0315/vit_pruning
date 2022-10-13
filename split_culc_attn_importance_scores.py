@@ -55,7 +55,6 @@ transform_test = transforms.Compose(
     ]
 )
 
-debag = u.debag()
 
 
 testset = torchvision.datasets.CIFAR10(
@@ -223,9 +222,9 @@ if not os.path.isdir(f"importances/self-pruned-{name}"):
     os.makedirs(f"importances/self-pruned-{name}")
 
 with open(
-    f"importances/block_{args.block_ind}.txt", "w"
+    f"importances/self-pruned-{name}/block_{args.block_ind}.txt", "w"
 ) as f:
     for l, ind in importance:
-        f.write(str(l) + str(ind) + "\n")
+        f.write(str(l) +","+ str(ind) + "\n")
 
 
