@@ -95,7 +95,7 @@ class FeedForward(nn.Module):
 
 
 class Attention(nn.Module):
-    def __init__(self, dim, dim1, heads=8,dim_head=64, dropout=0.0, qkv_bias=False):
+    def __init__(self, dim, dim1, heads=8, dim_head=64, qkv_bias=False, dropout=0.0):
         super().__init__()
         self.heads = heads
         self.scale = dim1 ** -0.5
@@ -112,13 +112,12 @@ class Attention(nn.Module):
         self.attn_to_q = nn.Linear(dim, dim1, bias=qkv_bias)
         self.attn_to_k = nn.Linear(dim, dim1, bias=qkv_bias)
         self.attn_to_v = nn.Linear(dim, dim1, bias=qkv_bias)
-        
+
         self.attn_to_out = (
             nn.Sequential(nn.Linear(dim1, dim), nn.Dropout(dropout))
             if project_out
             else nn.Identity()
         )
-
 
         # self.select1 = channel_selection(dim)
 
@@ -152,7 +151,17 @@ class Attention(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout=0.0, cfg=None, qkv_bias=False):
+    def __init__(
+        self,
+        dim,
+        depth,
+        heads,
+        dim_head,
+        mlp_dim,
+        dropout=0.0,
+        cfg=None,
+        qkv_bias=False,
+    ):
         super().__init__()
         self.layers = nn.ModuleList([])
         if cfg is not None:
