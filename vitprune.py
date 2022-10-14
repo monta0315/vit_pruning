@@ -222,6 +222,10 @@ for k, v in model.state_dict().items():
     target = target_layer(i)
     if k in target:
         idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[i].cpu().numpy())))
+        """
+            maskの0のindexを抜いたindex_listがidx
+            vのidxのindexだけを抜き出したやつをnew_dictとする
+        """
         newdict[k] = v[idx.tolist()].clone()
     elif f"{i}.0.fn.attn_to_out.0.weight"  in k:
         idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[i].cpu().numpy())))
