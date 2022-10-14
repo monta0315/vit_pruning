@@ -8,7 +8,7 @@ from models.attn_importance_split import ViT
 
 
 def get_dict():
-    base_path = "checkpoint/self-pruned-vit-CIFAR10-5epochs-64bs.pth"
+    base_path = "pruned2_checkpoints/second_pruned_newer-CIFAR10-2epochs-256bs.pth"
 
     checkpoint = torch.load(base_path, map_location="cpu")
 

@@ -6,10 +6,10 @@ from models.select_split import ViT
 
 
 class Utility():
-    def __init__(self,name= "vit-CIFAR10-5epochs-64bs"):
+    def __init__(self,name= "newest-CIFAR10-100epochs-256bs"):
         self.name = name
-        self.model_path = f"ch_sele_checkpoint/{name}.pth"
-        self.pruned_model_path = f"pruned1_checkpoint/self-pruned-{name}.pth"
+        self.model_path = f"ch_sele_checkpoints/{name}.pth"
+        self.pruned_model_path = f"pruned1_checkpoints/self-pruned-{name}.pth"
 
 
     def get_model(self):
@@ -55,3 +55,8 @@ class Utility():
     
     def get_name(self):
         return self.name
+
+    def debag(self,model):
+        for k,v in model.items():
+            print(k)
+            print(v.shape)

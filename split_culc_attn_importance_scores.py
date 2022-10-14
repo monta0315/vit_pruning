@@ -22,6 +22,7 @@ from torch.cuda.amp import autocast as autocast
 
 from models.attn_importance_split_slim import ViT as attn_ViT
 from models.slim_split import ViT_slim
+from utility import Utility
 from utils.utils import AverageMeter, ProgressMeter, accuracy
 
 parser = argparse.ArgumentParser(description="PyTorch CIFAR10 Training")
@@ -35,7 +36,9 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-base_path = "checkpoint/self-pruned-vit-CIFAR10-5epochs-64bs.pth"
+u = Utility()
+
+_,base_path = u.get_model_path()
 
 
 use_cuda = torch.cuda.is_available()
@@ -52,10 +55,6 @@ transform_test = transforms.Compose(
     ]
 )
 
-def debag(model):
-    for k,v in model.items():
-        print(k)
-        print(v.shape)
 
 
 testset = torchvision.datasets.CIFAR10(
@@ -81,9 +80,7 @@ teacher_model = attn_ViT(
 )
 model_dict = teacher_model.state_dict()
 new_dict = {}
-cnt = 1
 for k, v in checkpoint["net"].items():
-    cnt += 1
     new_dict[k] = v
 model_dict.update(new_dict)
 
@@ -98,8 +95,6 @@ checkpoint = torch.load(base_path, map_location="cpu")
 candidate_index = range(checkpoint['cfg'][args.block_ind])
 
 
-results1 = []
-results5 = []
 importance = []
 for delete_ind in candidate_index:
     net = attn_ViT(
@@ -127,7 +122,6 @@ for delete_ind in candidate_index:
     """
 
     new_dict = {}
-    cnt = 1
     for k, v in checkpoint["net"].items():
         # biasは一次元512要素だからv.size(0)==512からdelete_indをひく
         if str(args.block_ind) + ".0.fn" + ".attn_to_q.bias" in k:
@@ -169,20 +163,11 @@ for delete_ind in candidate_index:
     net.load_state_dict(model_dict)
 
     batch_time = AverageMeter("Time", ":6.3f")
-    """ losses = AverageMeter('Loss', ':.4e')
-    top1 = AverageMeter('Acc@1', ':6.2f')
-    top5 = AverageMeter('Acc@5', ':6.2f')
-    loss = AverageMeter('Loss', ':6.3f')
-    cos = AverageMeter('Cosine', ':6.3f') """
 
     progress = ProgressMeter(len(testloader), [batch_time], prefix="Test: ")
 
-    # 各層のimportanceを格納する
-    loss = 0
-
     evaluate = True
     if evaluate:
-        criterion = nn.CrossEntropyLoss()
         with torch.no_grad():
             net.eval()
             sample_correct = 0
@@ -190,6 +175,8 @@ for delete_ind in candidate_index:
             total = 0
 
             end = time.time()
+            kldiv = nn.KLDivLoss(reduction="sum")
+            kldivloss = 0
             for i, (images, target) in enumerate(testloader):
                 with autocast():
 
@@ -206,9 +193,12 @@ for delete_ind in candidate_index:
                         score, predicted = output.max(1)
                         sample_correct += predicted.eq(target).sum().item()
 
-
+                    logsoftmax = nn.LogSoftmax(dim=1).cuda()
+                    softmax = nn.Softmax(dim=1).cuda()
+                    kldivloss += kldiv(logsoftmax(output),softmax(teacher_output))
             sample_acc = 100.0 * sample_correct / total
             teacher_acc = 100.0 * teacher_correct / total
+            print("kldivloss",float(kldivloss))
             print("DeleteIndex", delete_ind)
             print(
                 "SampleAcc: %.3f%% (%d/%d)"
@@ -219,19 +209,22 @@ for delete_ind in candidate_index:
                 % (100.0 * teacher_correct / total, teacher_correct, total)
             )
 
-        loss = 100.0 * sample_acc / teacher_acc, images.size(0)
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
 
-        importance.append([loss, delete_ind])
+        importance.append([float(kldivloss), delete_ind])
 if not os.path.isdir("importances"):
     os.makedirs("importances")
 
+name = u.get_name()
+if not os.path.isdir(f"importances/self-pruned-{name}"):
+    os.makedirs(f"importances/self-pruned-{name}")
+
 with open(
-    "importances/test_base_vit_" + str(args.block_ind) + "_5k.txt", "w"
+    f"importances/self-pruned-{name}/block_{args.block_ind}.txt", "w"
 ) as f:
     for l, ind in importance:
-        f.write(str(l) + str(ind) + "\n")
+        f.write(str(l) +","+ str(ind) + "\n")
 
 

@@ -42,13 +42,13 @@ class FeedForward(nn.Module):
 
 
 class Attention(nn.Module):
-    def __init__(self, dim,dim1, heads=8, dim_head=64, qkv_bias=False, dropout=0.0):
+    def __init__(self, dim, dim1, heads=8, dim_head=64, qkv_bias=False, dropout=0.0):
         super().__init__()
-        inner_dim = dim_head * heads
-        project_out = not (heads == 1 and dim_head == dim)
-
         self.heads = heads
         self.scale = dim_head ** -0.5
+
+        project_out = not (heads == 1 and dim_head == dim)
+
 
         self.attn_attend = nn.Softmax(dim=-1)
         self.attn_dropout = nn.Dropout(dropout)
@@ -85,12 +85,12 @@ class Attention(nn.Module):
 
 class CompressAttention(nn.Module):
     def __init__(
-        self, dim,dim1, heads=8, qkv_bias=False, dim_head=64, dropout=0.0, reduce=None
+        self, dim, dim1, heads=8, qkv_bias=False, dim_head=64, dropout=0.0, reduce=None
     ):
         super().__init__()
         self.heads = heads
         self.dim1 = dim1
-        inner_dim = dim_head * heads
+        
         project_out = not (heads == 1 and dim_head == dim)
 
         self.num_heads = heads
@@ -126,15 +126,15 @@ class CompressAttention(nn.Module):
             (v[:, :, : self.reduce], cat_tensor.detach(), v[:, :, self.reduce :]), dim=2
         )
 
-        new_q = new_q.reshape(B, N, self.num_heads, self.dim1 // self.num_heads).permute(
-            0, 2, 1, 3
-        )
-        new_k = new_k.reshape(B, N, self.num_heads, self.dim1 // self.num_heads).permute(
-            0, 2, 1, 3
-        )
-        new_v = new_v.reshape(B, N, self.num_heads, self.dim1 // self.num_heads).permute(
-            0, 2, 1, 3
-        )
+        new_q = new_q.reshape(
+            B, N, self.num_heads, self.dim1 // self.num_heads
+        ).permute(0, 2, 1, 3)
+        new_k = new_k.reshape(
+            B, N, self.num_heads, self.dim1 // self.num_heads
+        ).permute(0, 2, 1, 3)
+        new_v = new_v.reshape(
+            B, N, self.num_heads, self.dim1 // self.num_heads
+        ).permute(0, 2, 1, 3)
 
         dots = torch.matmul(new_q, new_k.transpose(-1, -2)) * self.scale
 
@@ -235,8 +235,8 @@ class ViT(nn.Module):
         super().__init__()
         image_height, image_width = pair(image_size)
         patch_height, patch_width = pair(patch_size)
-        print("reduce",reduce,"ind",ind)
-
+        if not reduce == None:
+            print("reduce", reduce, "ind", ind)
 
         assert (
             image_height % patch_height == 0 and image_width % patch_width == 0
@@ -249,7 +249,7 @@ class ViT(nn.Module):
             "mean",
         }, "pool type must be either cls (cls token) or mean (mean pooling)"
 
-        assert(cfg != None), "cfg should not be None!"
+        assert cfg != None, "cfg should not be None!"
 
         self.to_patch_embedding = nn.Sequential(
             Rearrange(

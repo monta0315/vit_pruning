@@ -11,6 +11,7 @@ parser = argparse.ArgumentParser(description="which model use")
 args = parser.parse_args()
 
 
+from models.attn_importance_split_slim import ViT as attn_ViT
 from models.select_split import ViT, channel_selection
 from models.slim_split import ViT_slim
 from utility import Utility
@@ -41,7 +42,7 @@ model = ViT(
 u = Utility()
 
 name = u.get_name()
-model_path = f"ch_sele_checkpoint/{name}.pth"
+model_path = f"ch_sele_checkpoints/{name}.pth"
 
 
 model = model.to(device)
@@ -68,7 +69,7 @@ for m in model.modules():
     if isinstance(m, channel_selection):
         total += m.indexes.data.shape[0]
 
-bn = torch.zeros(total)
+bn = torch.zeros(total) # total = 512 * 6(multi)
 index = 0
 for m in model.modules():
     if isinstance(m, channel_selection):
@@ -76,9 +77,18 @@ for m in model.modules():
         bn[index : (index + size)] = m.indexes.data.abs().clone()
         index += size
 
-# 0.3未満の何かを見つけてる？？
-percent = 0.1
+"""
+    bn = tensor([0.9922, 0.9848, 1.0028,  ..., 0.9977, 1.0119, 0.9991]) torch.Size([3072])
+    刈り込む層の各チャンネルの重みを６層分まとめてる
+"""
+
+# 重みが小さいものの下から3割のindexを判明させている
+percent = 0.3
 y, i = torch.sort(bn)
+"""
+    y tensor([0.9551, 0.9560, 0.9560,  ..., 1.0368, 1.0370, 1.0408]) torch.Size([3072]) 
+    i tensor([ 425,  441,  130,  ..., 1728, 1847, 1763]) torch.Size([3072])
+"""
 thre_index = int(total * percent)
 thre = y[thre_index]
 
@@ -86,6 +96,9 @@ thre = y[thre_index]
 pruned = 0
 cfg = []
 cfg_mask = []
+"""
+    cfg_maskはtorch.Size([512])が6つ格納されたlistで各層のどのチャンネルを刈り込むかを適用するためのmask
+"""
 
 
 for k, m in enumerate(model.modules()):
@@ -100,7 +113,9 @@ for k, m in enumerate(model.modules()):
             weight_copy = m.indexes.data.abs().clone()
             mask = weight_copy.gt(thre).float().cuda()
             thre_ = thre.clone()
-            # kが特定の値の時だけ閾値を下げてる？
+            """
+                 pruning後のチャンネル数が8の倍数じゃないとheadの数と合わなくなるため、閾値の値を少しずつ下げ、チャンネル数が8nになるようにしている
+            """
             while torch.sum(mask) % 8 != 0:
                 thre_ = thre_ - 0.0001
                 mask = weight_copy.gt(thre_).float().cuda()
@@ -113,9 +128,7 @@ for k, m in enumerate(model.modules()):
         cfg.append(int(torch.sum(mask)))
         cfg_mask.append(mask.clone())
         """
-            kはLayerIndexでその層にある元々のチャンネル数がmask.shape[0]で与えられる？？
-            maskの状態はまだ刈り込みは行っていない？
-            Layerってなんやねん
+
         """
         print(
             "layer index: {:d} \t total channel: {:d} \t remaining channel: {:d}".format(
@@ -125,6 +138,7 @@ for k, m in enumerate(model.modules()):
 
 
 pruned_ratio = pruned / total
+print("prunded_ratio",f"{float(pruned_ratio)*100}%")
 print("Pre-processing Successful!")
 
 
@@ -162,7 +176,7 @@ def test(model, pruned=False, cfg=None):
             "epoch": checkpoint["epoch"],
             "cfg": cfg,
         }
-        torch.save(state, f"./pruned1_checkpoint/self-pruned-{name}.pth".format(4))
+        torch.save(state, f"./pruned1_checkpoints/self-pruned-{name}.pth".format(4))
         print("Complete!!!!!!!!!!!!!!!")
 
 
@@ -170,7 +184,7 @@ test(model)
 
 
 print("cfg_prune", cfg)
-newmodel = ViT_slim(
+newmodel = attn_ViT(
     image_size=32,
     patch_size=4,
     num_classes=10,
@@ -190,48 +204,39 @@ newmodel_dict = newmodel.state_dict().copy()
 
 i = 0
 newdict = {}
-for k, v in model.state_dict().items():
-    if "net1.0.weight" in k:
-        # print(k)
-        # print(v.size())
-        # print('----------')
-        idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[i].cpu().numpy())))
-        newdict[k] = v[idx.tolist()].clone()
-    elif "net1.0.bias" in k:
-        # print(k)
-        # print(v.size())
-        # print('----------')
-        idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[i].cpu().numpy())))
-        newdict[k] = v[idx.tolist()].clone()
-    elif "to_q" in k or "to_k" in k or "to_v" in k:
-        # print(k)
-        # print(v.size())
-        # print('----------')
-        idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[i].cpu().numpy())))
-        newdict[k] = v[idx.tolist()].clone()
-    elif "net2.0.weight" in k:
-        # print(k)
-        # print(v.size())
-        # print('----------')
-        idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[i].cpu().numpy())))
-        newdict[k] = v[:, idx.tolist()].clone()
-        i = i + 1
-    elif "to_out.0.weight" in k:
-        # print(k)
-        # print(v.size())
-        # print('----------')
-        idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[i].cpu().numpy())))
-        newdict[k] = v[:, idx.tolist()].clone()
-        i = i + 1
 
+#u.debag(model.state_dict())
+
+def target_layer(i:int):
+    target_layer_list = [
+        f"transformer.layers.{i}.0.fn.attn_to_q.bias",
+        f"transformer.layers.{i}.0.fn.attn_to_k.bias",
+        f"transformer.layers.{i}.0.fn.attn_to_v.bias",
+        f"transformer.layers.{i}.0.fn.attn_to_q.weight",
+        f"transformer.layers.{i}.0.fn.attn_to_k.weight",
+        f"transformer.layers.{i}.0.fn.attn_to_v.weight",
+    ]
+    return target_layer_list
+
+for k, v in model.state_dict().items():
+    target = target_layer(i)
+    if k in target:
+        idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[i].cpu().numpy())))
+        """
+            maskの0のindexを抜いたindex_listがidx
+            vのidxのindexだけを抜き出したやつをnew_dictとする
+        """
+        newdict[k] = v[idx.tolist()].clone()
+    elif f"{i}.0.fn.attn_to_out.0.weight"  in k:
+        idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[i].cpu().numpy())))
+        newdict[k] = v[:, idx.tolist()].clone()
+        i = i+1
     elif k in newmodel.state_dict():
         newdict[k] = v
 
+
 newmodel_dict.update(newdict)
 
-""" for k,v in newmodel_dict.items():
-    print(k)
-    print(v.shape) """
 
 newmodel.load_state_dict(newmodel_dict)
 
