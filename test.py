@@ -37,7 +37,7 @@ def threshoud_importance_score(score_list):
 
 
 def make_mask(score_lists):
-    mask = []
+    cfg_mask = []
     cfg = []
     for list in score_lists:
         size = len(list)
@@ -47,12 +47,12 @@ def make_mask(score_lists):
         thre_index = int(size*threshould)
         while (size-thre_index) % 8 != 0:
             thre_index = thre_index - 1
-        thre_value = copy[thre_index]
-        step = target.gt_(thre_value)
-        mask.append(step)
+        thre_value = copy[thre_index - 1]
+        step = target.gt(thre_value)
+        cfg_mask.append(step)
         cfg.append(size-thre_index)
     
-    return cfg,mask
+    return cfg,cfg_mask
 
 
 
@@ -79,6 +79,8 @@ for i in range(6):
 checkpoint = torch.load(model_path,map_location="cpu")
 
 cfg,cfg_mask = make_mask(importance_score)
+
+
 print("pruned",cfg)
 print("before",checkpoint['cfg'])
 
@@ -120,7 +122,6 @@ for dim in range(6):
     ]
     for l in target_layers:
         idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[dim].cpu().numpy())))
-        print(len(idx))
         v = new_dict[l].clone()
         new_dict[l] = v[idx.tolist()].clone()
 
@@ -130,7 +131,9 @@ for dim in range(6):
     new_dict[l] = v[:, idx.tolist()].clone()
 
 
-new_model.update(new_dict)
+new_model_dict.update(new_dict)
+
+#u.debag(new_model_dict)
 
 new_model.load_state_dict(new_model_dict)
 
@@ -169,7 +172,7 @@ def test(model, pruned=False, cfg=None):
             "epoch": checkpoint["epoch"],
             "cfg": cfg,
         }
-        torch.save(state, f"./pruned1_checkpoints/self-pruned-{name}.pth".format(4))
+        torch.save(state, f"./pruned2_checkpoints/self-pruned-{name}.pth".format(4))
         print("Complete!!!!!!!!!!!!!!!")
 
 
