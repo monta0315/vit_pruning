@@ -32,7 +32,7 @@ CIFAR10
 
 # Prune 2
 
-- Culc importance score
+- Culc importance scores
  ```
     python3 split_culc_attn_importance_scores.py
  ```
