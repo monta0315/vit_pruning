@@ -83,7 +83,7 @@ for m in model.modules():
 """
 
 # 重みが小さいものの下から3割のindexを判明させている
-percent = 0.3
+percent = 0.2
 y, i = torch.sort(bn)
 """
     y tensor([0.9551, 0.9560, 0.9560,  ..., 1.0368, 1.0370, 1.0408]) torch.Size([3072]) 
