@@ -6,13 +6,13 @@ from models.select_split import ViT
 
 
 class Utility():
-    def __init__(self,name="base",name2=None):
-        self.name = name
+    def __init__(self,name="newest",name2=None):
         self.cfg = "CIFAR10-100epochs-256bs"
+        self.name = f"{name}-{self.cfg}"
         self.model_path = f"ch_sele_checkpoints/{name}-{self.cfg}.pth"
         self.pruned_model_path = f"pruned1_checkpoints/self-pruned-{name}-{self.cfg}.pth"
-        self.pruned_2_1_model_path = f"pruned2_checkpoints/self-pruned-{name2}-{self.cfg}.pth"
-        self.pruned_2_2_model_path = f"pruned2_checkpoints/self-pruned-{name}-{self.cfg}.pth"
+        self.pruned_2_1_model_path = f"pruned2_checkpoints/self-pruned-{name}-{self.cfg}.pth"
+        self.pruned_2_2_model_path = f"pruned2_checkpoints/self-pruned-{name}-{self.cfg}-all.pth"
 
 
     def get_model(self):
