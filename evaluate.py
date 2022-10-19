@@ -21,6 +21,7 @@ class Evaluate:
         self.model,self.pruned_model = u.get_model()
         self.model_path,self.pruned_model_path = u.get_model_path()
 
+
     def get_img(self):
         img_path = "data/inference_img.png"
         if os.path.isfile(img_path):

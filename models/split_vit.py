@@ -70,9 +70,9 @@ class Attention(nn.Module):
         self.attn_dropout = nn.Dropout(dropout)
 
         #self.attn_to_qkv = nn.Linear(dim, inner_dim * 3, bias=qkv_bias)
-        self.attn_to_q = nn.Linear(dim,dim,bias=qkv_bias)
-        self.attn_to_k = nn.Linear(dim,dim,bias=qkv_bias)
-        self.attn_to_v = nn.Linear(dim,dim,bias=qkv_bias)
+        self.attn_to_q = nn.Linear(dim,inner_dim,bias=qkv_bias)
+        self.attn_to_k = nn.Linear(dim,inner_dim,bias=qkv_bias)
+        self.attn_to_v = nn.Linear(dim,inner_dim,bias=qkv_bias)
 
         self.attn_to_out = (
             nn.Sequential(nn.Linear(inner_dim, dim), nn.Dropout(dropout))

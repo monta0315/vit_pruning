@@ -170,7 +170,13 @@ class ViT(nn.Module):
         self.dropout = nn.Dropout(emb_dropout)
 
         self.transformer = Transformer(
-            dim, depth, heads, dim_head, mlp_dim, dropout, qkv_bias
+            dim=dim,
+            depth=depth,
+            heads=heads,
+            dim_head=dim_head,
+            mlp_dim=mlp_dim,
+            dropout=dropout,
+            qkv_bias=qkv_bias,
         )
 
         self.pool = pool
