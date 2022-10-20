@@ -6,8 +6,8 @@ from models.select_split import ViT
 
 
 class Utility():
-    def __init__(self,name="newest",name2=None):
-        self.cfg = "CIFAR10-100epochs-256bs"
+    def __init__(self,name="newest",name2=None,strategy="each"):
+        self.cfg = f"CIFAR10-100epochs-256bs-{strategy}"
         self.name = f"{name}-{self.cfg}"
         self.model_path = f"ch_sele_checkpoints/{name}-{self.cfg}.pth"
         self.pruned_model_path = f"pruned1_checkpoints/self-pruned-{name}-{self.cfg}.pth"
