@@ -39,9 +39,9 @@ model = ViT(
     qkv_bias=True
 )
 
-u = Utility()
+u = Utility("newest")
 
-name = u.get_name()
+name = u.get_first_name()
 model_path = f"ch_sele_checkpoints/{name}.pth"
 
 
@@ -83,7 +83,7 @@ for m in model.modules():
 """
 
 # 重みが小さいものの下から3割のindexを判明させている
-percent = 0.2
+percent = 0.40
 y, i = torch.sort(bn)
 """
     y tensor([0.9551, 0.9560, 0.9560,  ..., 1.0368, 1.0370, 1.0408]) torch.Size([3072]) 

@@ -41,7 +41,7 @@ model = ViT(
 
 u = Utility("newest")
 
-name = u.get_name()
+name = u.get_first_name()
 model_path = f"ch_sele_checkpoints/{name}.pth"
 
 
@@ -67,7 +67,7 @@ print(
 """
 
 # 重みが小さいものの下から3割のindexを判明させている
-percent = 0.2
+percent = 0.42
 pruned = 0
 cfg = []
 cfg_mask = []
@@ -80,7 +80,6 @@ def culc_thre(tensor:torch.Tensor)->torch.Tensor:
     cp = tensor.clone()
     cp,_ = torch.sort(cp)
     thre_index = int(len(cp)*percent)
-    print("a",thre_index)
     return cp[thre_index-1]
 
 
