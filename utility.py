@@ -15,6 +15,7 @@ class Utility():
         self.pruned_model_path = f"pruned1_checkpoints/self-pruned-{name}-{self.cfg}.pth"
         self.pruned_2_1_model_path = f"pruned2_checkpoints/self-pruned-{name}-{self.cfg}.pth"
         self.pruned_2_2_model_path = f"pruned2_checkpoints/self-pruned-{name}-{self.cfg}-all.pth"
+        self.strategy = strategy
 
 
     def get_model(self):
@@ -106,3 +107,5 @@ class Utility():
         for k,v in model.items():
             print(k)
             print(v.shape)
+    def strategy(self):
+        return self.strategy

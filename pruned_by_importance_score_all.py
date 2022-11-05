@@ -79,7 +79,7 @@ for i in range(6):
 # threshoud_importance_score(importance_score)
 
 # if apply only method2 
-model_path = f"ch_sele_checkpoints/{name}.pth"
+# model_path = f"ch_sele_checkpoints/{name}.pth"
 
 checkpoint = torch.load(model_path,map_location="cpu")
 
@@ -87,7 +87,7 @@ cfg,cfg_mask = make_mask(importance_score_lists,all_importance_score)
 
 
 print("pruned",cfg)
-#print("before",checkpoint['cfg'])
+print("before",checkpoint['cfg'])
 
 new_model = ViT(
     image_size=32,

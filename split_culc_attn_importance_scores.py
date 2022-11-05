@@ -39,6 +39,8 @@ args = parser.parse_args()
 u = Utility()
 
 _,base_path = u.get_model_path()
+strategy = u.strategy
+name = u.get_name()
 
 
 use_cuda = torch.cuda.is_available()
@@ -63,6 +65,8 @@ testset = torchvision.datasets.CIFAR10(
 testloader = torch.utils.data.DataLoader(
     testset, batch_size=100, shuffle=False, num_workers=8
 )
+
+print(f'self-pruned-{name}-{strategy}')
 
 print("==> Resuming from checkpoint..")
 checkpoint = torch.load(base_path, map_location="cpu")
@@ -188,6 +192,7 @@ for delete_ind in candidate_index:
                     teacher_output = teacher_model(images)
                     teacher_score, teacher_predicted = teacher_output.max(1)
                     teacher_correct += teacher_predicted.eq(target).sum().item()
+                    print("teacher",teacher_output[0])
                     with torch.no_grad():
                         output = net(images)
                         score, predicted = output.max(1)
@@ -217,12 +222,11 @@ for delete_ind in candidate_index:
 if not os.path.isdir("importances"):
     os.makedirs("importances")
 
-name = u.get_name()
-if not os.path.isdir(f"importances/self-pruned-{name}"):
-    os.makedirs(f"importances/self-pruned-{name}")
+if not os.path.isdir(f"importances/self-pruned-{name}-{strategy}"):
+    os.makedirs(f"importances/self-pruned-{name}-{strategy}")
 
 with open(
-    f"importances/self-pruned-{name}/block_{args.block_ind}.txt", "w"
+    f"importances/self-pruned-{name}-{strategy}/block_{args.block_ind}.txt", "w"
 ) as f:
     for l, ind in importance:
         f.write(str(l) +","+ str(ind) + "\n")
