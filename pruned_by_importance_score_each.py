@@ -13,11 +13,13 @@ from utils.utils import progress_bar
 u = Utility("base")
 name = u.get_name()
 _,model_path = u.get_model_path()
+# if apply only method2 
+model_path = f"ch_sele_checkpoints/{name}.pth"
 
 block_ind = 0
 
 importance_score = []
-threshould = 0.40
+threshould = 0.4
 pruned_target_index = []
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -75,8 +77,6 @@ for i in range(6):
 
 # threshoud_importance_score(importance_score)
 
-# if apply only method2 
-model_path = f"ch_sele_checkpoints/{name}.pth"
 
 checkpoint = torch.load(model_path,map_location="cpu")
 
