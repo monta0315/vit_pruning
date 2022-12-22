@@ -9,7 +9,7 @@ from models.attn_importance_split import ViT
 
 def get_dict():
     #base_path = "pruned2_checkpoints/second_pruned_newer-CIFAR10-2epochs-256bs.pth"
-    base_path = "ch_sele_checkpoints/newest-CIFAR10-100epochs-256bs.pth"
+    base_path = "pruned1_checkpoints/self-pruned-newest-CIFAR10-100epochs-256bs-each.pth"
 
     checkpoint = torch.load(base_path, map_location="cpu")
 
@@ -40,11 +40,7 @@ def get_dict2():
 target = 0
 
 for k, v in get_dict().items():
-    if k == "transformer.layers.5.0.fn.select1.indexes":
-        #print(v)
-        target = v
-"""     print(k)
-    print(v.shape) """
+    print(k,v.shape)
 
-for i,v in enumerate(target):
-    print(f"{i},{float(v)}")
+""" for i,v in enumerate(target):
+    print(f"{i},{float(v)}") """

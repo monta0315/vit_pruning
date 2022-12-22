@@ -7,7 +7,7 @@ from models.select_split import ViT
 
 class Utility():
     def __init__(self,name="newest",name2=None,strategy="each"):
-        self.cfg = f"CIFAR10-100epochs-256bs-{strategy}"
+        self.cfg = f"CIFAR10-100epochs-256bs"
         self.first_cfg = f"CIFAR10-100epochs-256bs"
         self.name = f"{name}-{self.cfg}"
         self.first_name = f"{name}-{self.first_cfg}"
@@ -109,3 +109,21 @@ class Utility():
             print(v.shape)
     def strategy(self):
         return self.strategy
+    
+    def txt_impotance_scores_convert_array(self,name,ind):
+        importance_score_lists = []
+        with open(f"importances/self-pruned-{name}/block_{ind}.txt",'r') as f:
+            f.seek(0, os.SEEK_END)
+            isempty = f.tell() == 0
+            f.seek(0)
+            step = []
+            if not isempty:
+                for i in f:
+                    index,soft_score,hard_score,q,k,v = i[:-1].split(',')
+                    step.append(index,float(soft_score),float(hard_score))
+            else:
+                print(f"block_{i} is empty file")
+            
+            importance_score_lists.append(step)
+        
+        return importance_score_lists
