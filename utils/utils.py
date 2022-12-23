@@ -273,6 +273,17 @@ def test(model,device,name,checkpoint, pruned=False, cfg=None,method=1,strategy=
                 _, predicted = outputs.max(1)
                 total += targets.size(0)
                 correct += predicted.eq(targets).sum().item()
+                progress_bar(
+                    batch_idx,
+                    len(testloader),
+                    "Loss: %.3f | Acc: %.3f%% (%d/%d)"
+                    % (
+                        test_loss / (batch_idx + 1),
+                        100.0 * correct / total,
+                        correct,
+                        total,
+                    ),
+                )
 
             print("Acc: %.3f%% (%d/%d)" % (100.0 * correct / total, correct, total))
         if pruned:
