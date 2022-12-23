@@ -107,13 +107,13 @@ class CompressAttention(nn.Module):
         self.reduce = int(reduce)
 
     def forward(self, x):
-        B, N, _, h = *x.shape, self.heads
+        B, N, _, h = *x.shape, self.num_heads
         q = self.attn_to_q(x)
-        q = rearrange(q, "b n (h d) -> b h n d", h=h)
+        #q = rearrange(q, "b n (h d) -> b h n d", h=h)
         k = self.attn_to_k(x)
-        k = rearrange(k, "b n (h d) -> b h n d", h=h)
+        #k = rearrange(k, "b n (h d) -> b h n d", h=h)
         v = self.attn_to_v(x)
-        v = rearrange(v, "b n (h d) -> b h n d", h=h)
+        #v = rearrange(v, "b n (h d) -> b h n d", h=h)
 
         cat_tensor = torch.zeros((B, N, 1)).cuda(device=q.device)
 

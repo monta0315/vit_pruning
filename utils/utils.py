@@ -5,14 +5,24 @@
     - msr_init: net parameter initialization.
     - progress_bar: progress bar mimic xlua.progress.
 '''
+import copy
 import math
 import os
 import sys
 import time
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.init as init
+import torchvision
+import torchvision.transforms as transforms
+from sklearn.linear_model import LinearRegression
+
+from models.attn_importance_split_slim import ViT
+from models.select_split import ViT as select_base
+from models.select_split import channel_selection
+from utility import Utility
 
 
 def get_mean_and_std(dataset):
@@ -189,3 +199,139 @@ def accuracy(output, target, topk=(1,)):
             correct_k = correct[:k].contiguous().view(-1).float().sum(0, keepdim=True)
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
+
+def txt_impotance_scores_convert_array(name,ind):
+    importance_score_lists = []
+    with open(f"importances/self-pruned-{name}/block_{ind}.txt",'r') as f:
+        f.seek(0, os.SEEK_END)
+        isempty = f.tell() == 0
+        f.seek(0)
+        ind_arr = []
+        soft = []
+        hard = []
+        value = []
+        if not isempty:
+            for i in f:
+                index,soft_score,hard_score,v = i[:-1].split(',')
+                ind_arr.append(index)
+                soft.append(float(soft_score))
+                hard.append(float(hard_score))
+                value.append(float(v))
+        else:
+            print(f"block_{i} is empty file")
+        
+        importance_score_lists.append(ind_arr)
+        importance_score_lists.append(soft)
+        importance_score_lists.append(hard)
+        importance_score_lists.append(value)
+
+        #return [512,512,512,512]
+
+    return importance_score_lists
+
+def linear_regression(importance_score_lists):
+    x = np.array(importance_score_lists[2])
+    y = np.array(importance_score_lists[1])
+    print("corrcoef",np.corrcoef(x,y)[0][1])
+    # 転置
+    x = np.array(importance_score_lists[2]).reshape((-1,1))
+    model = LinearRegression()
+    model.fit(x, y)
+    r_sq = model.score(x, y)
+    # 決定係数を出す意味があるのかはわからん => あんま関係ない気もする
+    print(f"coefficient of determination: {r_sq}")
+    y_h_arr = model.predict(x)
+    y_loss_arr = []
+    for i in range(len(x)):
+        # np.arrayで下の数式を計算するのとただのarrayで計算するのだと計算結果が微妙に違う
+        y_loss = math.fabs(y_h_arr[i]-y[i])
+        y_loss_arr.append(y_loss)
+
+    return y_loss_arr
+
+def test(model,device,name,checkpoint, pruned=False, cfg=None,method=1,strategy="all",cfg_mask=[]):
+        transform_test = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            ]
+        )
+        testset = torchvision.datasets.CIFAR10(
+            root="data", train=False, download=True, transform=transform_test
+        )
+        testloader = torch.utils.data.DataLoader(
+            testset, batch_size=100, shuffle=False, num_workers=8
+        )
+        model.eval()
+        test_loss = 0
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for batch_idx, (inputs, targets) in enumerate(testloader):
+                inputs, targets = inputs.to(device), targets.to(device)
+                outputs = model(inputs)
+                _, predicted = outputs.max(1)
+                total += targets.size(0)
+                correct += predicted.eq(targets).sum().item()
+                progress_bar(
+                    batch_idx,
+                    len(testloader),
+                    "Loss: %.3f | Acc: %.3f%% (%d/%d)"
+                    % (
+                        test_loss / (batch_idx + 1),
+                        100.0 * correct / total,
+                        correct,
+                        total,
+                    ),
+                )
+
+            print("Acc: %.3f%% (%d/%d)" % (100.0 * correct / total, correct, total))
+        if pruned:
+            state = {
+                "net": model.state_dict(),
+                "acc": 100.0 * correct / total,
+                "epoch": checkpoint["epoch"],
+                "cfg": cfg,
+                "rate":sum(cfg)/(512*6),
+                "cfg_mask":cfg_mask
+            }
+            torch.save(state, f"./pruned{method}_checkpoints/self-pruned-{name}-{strategy}.pth".format(4))
+            print("Complete!!!!!!!!!!!!!!!")
+
+def get_select_values(ind):
+    sele_val = []
+    selection_index = [19, 41, 63, 85, 107, 129]
+    model = select_base(
+        image_size=32,
+        patch_size=4,
+        num_classes=10,
+        dim=512,  # 512
+        depth=6,
+        heads=8,
+        mlp_dim=512,
+        dropout=0.1,
+        emb_dropout=0.1,
+        qkv_bias=True
+    )
+    model_path = "ch_sele_checkpoints/newest-CIFAR10-100epochs-256bs.pth"
+    checkpoint = torch.load(model_path)
+    model.load_state_dict(checkpoint["net"])
+    for k,m in enumerate(model.modules()):
+        if isinstance(m,channel_selection):
+            if k in selection_index:
+                sele_val.append(m.indexes.data.abs().clone())
+
+    return sele_val[ind]
+
+def get_mask(name,layer_num=0):
+    checkpoint = torch.load(name, map_location="cpu")
+    
+    return  checkpoint["cfg_mask"][layer_num]
+
+def squeeze_channel(target,mask):
+    idx = np.squeeze(np.argwhere(np.asarray(mask.numpy())))
+    v = torch.Tensor(target).clone()
+
+    # ここの絞り込みがlistだとうまくいかないからTensorにしゃーなしでかえる
+    v = v[idx.tolist()].clone()
+    return v.tolist()

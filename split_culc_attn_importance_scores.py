@@ -20,7 +20,13 @@ from torch.autograd import Variable
 from torch.cuda.amp import GradScaler as GradScaler
 from torch.cuda.amp import autocast as autocast
 
-from models.attn_importance_split_slim import ViT as attn_ViT
+"""
+    if use pruned model 
+        from models.attn_importance_split_slim import ViT as attn_ViT
+    else
+        from models.attn_importance_split import ViT as attn_ViT
+"""
+from models.attn_importance_split import ViT as attn_ViT
 from models.slim_split import ViT_slim
 from utility import Utility
 from utils.utils import AverageMeter, ProgressMeter, accuracy
@@ -34,11 +40,16 @@ parser.add_argument(
     "--block_ind", default=-1, type=int, help="Total batch size for training."
 )
 
+def convert_tensor_to_float(tensor:torch.tensor)->float:
+    return round(float(tensor),4)
+
+
 args = parser.parse_args()
 
-u = Utility()
+u = Utility("base")
 
-_,base_path = u.get_model_path()
+# if want to use pruned model select second return value
+base_path,_ = u.get_model_path()
 strategy = u.strategy
 name = u.get_name()
 
@@ -80,15 +91,26 @@ teacher_model = attn_ViT(
     mlp_dim=512,
     dropout=0.1,
     qkv_bias=True,
-    cfg=checkpoint["cfg"]
+    #cfg=checkpoint["cfg"]
 )
 model_dict = teacher_model.state_dict()
-new_dict = {}
-for k, v in checkpoint["net"].items():
-    new_dict[k] = v
-model_dict.update(new_dict)
 
-teacher_model.load_state_dict(model_dict)
+k_token_value = torch.zeros(512)
+q_token_value = torch.zeros(512)
+v_token_value = torch.zeros(512)
+
+for k, v in checkpoint["net"].items():
+    if k == f"transformer.layers.{args.block_ind}.0.fn.attn_to_q.weight":
+        q_token_value = v[0]
+    elif k == f"transformer.layers.{args.block_ind}.0.fn.attn_to_k.weight":
+        k_token_value = v[0]
+    elif k == f"transformer.layers.{args.block_ind}.0.fn.attn_to_v.weight":
+        v_token_value = v[0]
+
+
+model_dict.update(checkpoint['net'])
+
+teacher_model.load_state_dict(checkpoint['net'])
 
 
 teacher_model.cuda()
@@ -96,6 +118,7 @@ teacher_model = torch.nn.DataParallel(teacher_model)
 print("=> loaded teacher checkpoint")
 
 checkpoint = torch.load(base_path, map_location="cpu")
+checkpoint["cfg"] = [512]*6
 candidate_index = range(checkpoint['cfg'][args.block_ind])
 
 
@@ -112,7 +135,7 @@ for delete_ind in candidate_index:
         mlp_dim=512,
         reduce=delete_ind,
         ind=args.block_ind,
-        cfg=checkpoint["cfg"]
+        #cfg=checkpoint["cfg"]
     )
 
     net.cuda()
@@ -181,6 +204,7 @@ for delete_ind in candidate_index:
             end = time.time()
             kldiv = nn.KLDivLoss(reduction="sum")
             kldivloss = 0
+            distillation_loss = 0
             for i, (images, target) in enumerate(testloader):
                 with autocast():
 
@@ -192,7 +216,6 @@ for delete_ind in candidate_index:
                     teacher_output = teacher_model(images)
                     teacher_score, teacher_predicted = teacher_output.max(1)
                     teacher_correct += teacher_predicted.eq(target).sum().item()
-                    print("teacher",teacher_output[0])
                     with torch.no_grad():
                         output = net(images)
                         score, predicted = output.max(1)
@@ -201,10 +224,13 @@ for delete_ind in candidate_index:
                     logsoftmax = nn.LogSoftmax(dim=1).cuda()
                     softmax = nn.Softmax(dim=1).cuda()
                     kldivloss += kldiv(logsoftmax(output),softmax(teacher_output))
+                    distillation_loss += (F.cross_entropy(output,target) + F.cross_entropy(output,teacher_predicted))/2
             sample_acc = 100.0 * sample_correct / total
             teacher_acc = 100.0 * teacher_correct / total
-            print("kldivloss",float(kldivloss))
+            print("kldivloss",convert_tensor_to_float(kldivloss))
+            print("cross-entropy",convert_tensor_to_float(distillation_loss))
             print("DeleteIndex", delete_ind)
+
             print(
                 "SampleAcc: %.3f%% (%d/%d)"
                 % (100.0 * sample_correct / total, sample_correct, total)
@@ -218,7 +244,8 @@ for delete_ind in candidate_index:
         batch_time.update(time.time() - end)
         end = time.time()
 
-        importance.append([float(kldivloss), delete_ind])
+        importance.append([convert_tensor_to_float(kldivloss),convert_tensor_to_float(distillation_loss) ,delete_ind])
+        print("kl",convert_tensor_to_float(kldivloss),"ce",convert_tensor_to_float(distillation_loss),"delete_ind", delete_ind,"k",convert_tensor_to_float(k_token_value[delete_ind]),"q",convert_tensor_to_float(q_token_value[delete_ind]),"v",convert_tensor_to_float(v_token_value[delete_ind]))
 if not os.path.isdir("importances"):
     os.makedirs("importances")
 
@@ -228,7 +255,7 @@ if not os.path.isdir(f"importances/self-pruned-{name}-{strategy}"):
 with open(
     f"importances/self-pruned-{name}-{strategy}/block_{args.block_ind}.txt", "w"
 ) as f:
-    for l, ind in importance:
-        f.write(str(l) +","+ str(ind) + "\n")
+    for kl, ce,ind in importance:
+        f.write(str(ind) +","+str(kl) +","+str(ce)+","+str(convert_tensor_to_float(k_token_value[ind]))+","+str(convert_tensor_to_float(q_token_value[ind]))+","+str(convert_tensor_to_float(v_token_value[ind]))+"\n")
 
 
