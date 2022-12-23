@@ -7,16 +7,19 @@ from models.attn_importance_split import ViT
 # from models.vit import ViT
 
 
-def get_dict():
+def get_dict(path_name="pruned3_checkpoints/self-pruned-base-CIFAR10-100epochs-256bs-each-test-each.pth"):
     #base_path = "pruned2_checkpoints/second_pruned_newer-CIFAR10-2epochs-256bs.pth"
-    base_path = "pruned1_checkpoints/self-pruned-newest-CIFAR10-100epochs-256bs-each.pth"
 
-    checkpoint = torch.load(base_path, map_location="cpu")
+    checkpoint = torch.load(path_name, map_location="cpu")
 
     dict = checkpoint["net"]
 
     return dict
 
+def get_mask(path_name="pruned3_checkpoints/self-pruned-base-CIFAR10-100epochs-256bs-each-test-each.pth"):
+    checkpoint = torch.load(path_name, map_location="cpu")
+
+    return checkpoint["cfg_mask"]
 
 def get_dict2():
     cfg = [376, 392, 360, 368, 336, 400]
@@ -39,8 +42,9 @@ def get_dict2():
 
 target = 0
 
-for k, v in get_dict().items():
-    print(k,v.shape)
+print(get_mask())
 
-""" for i,v in enumerate(target):
-    print(f"{i},{float(v)}") """
+#for k, v in get_dict().items():
+    #print(k,v.shape)
+
+

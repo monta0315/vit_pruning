@@ -7,6 +7,7 @@ import torchvision
 import torchvision.transforms as transforms
 
 from models.attn_importance_split_slim import ViT
+from models.split_vit import ViT as base
 from utility import Utility
 from utils.utils import (linear_regression, progress_bar, test,
                          txt_impotance_scores_convert_array)
@@ -67,6 +68,7 @@ def make_mask(score_lists):
 
 # get importance scores => [index,soft,hard]*512
 # method 3
+name = "base-CIFAR10-100epochs-256bs-each-test"
 for i in range(6):
     step = txt_impotance_scores_convert_array(name,i)
     # only method3
@@ -79,8 +81,26 @@ for i in range(6):
 
 checkpoint = torch.load(model_path,map_location="cpu")
 
-cfg,cfg_mask = make_mask(importance_score)
+base_model = base(    
+    image_size=32,
+    patch_size=4,
+    num_classes=10,
+    dim=512,
+    depth=6,
+    heads=8,
+    mlp_dim=512,
+    dropout=0.1,
+    emb_dropout=0.1,
+    qkv_bias=True)
 
+base_model.to(device)
+
+base_model.load_state_dict(checkpoint['net'])
+
+print("Base_model_accuracy")
+test(base_model,device,name,checkpoint)
+
+cfg,cfg_mask = make_mask(importance_score)
 
 print("pruned",cfg)
 # print("before",checkpoint['cfg'])
@@ -140,4 +160,4 @@ new_model.load_state_dict(new_model_dict)
 
 
 
-test(new_model,device,name,checkpoint,True,cfg,2,"each")
+test(new_model,device,name,checkpoint,True,cfg,2,"each",cfg_mask)

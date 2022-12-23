@@ -68,6 +68,7 @@ def make_mask(score_lists):
 
 # get importance scores => [index,soft,hard]*512
 # method 3
+name = "base-CIFAR10-100epochs-256bs-each-test"
 for i in range(6):
     step = txt_impotance_scores_convert_array(name,i)
     step = linear_regression(step)
@@ -157,4 +158,4 @@ new_model_dict.update(new_dict)
 new_model.load_state_dict(new_model_dict)
 
 
-test(new_model,device,name,checkpoint,True,cfg,3,"each")
+test(new_model,device,name,checkpoint,True,cfg,3,"each",cfg_mask)

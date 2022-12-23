@@ -214,10 +214,13 @@ for delete_ind in candidate_index:
                     softmax = nn.Softmax(dim=1).cuda()
                     kldivloss += kldiv(logsoftmax(output),softmax(teacher_output))
                     distillation_loss += (F.cross_entropy(output,target) + F.cross_entropy(output,teacher_predicted))/2
+            
+            kldivloss = kldivloss/total
+            distillation_loss = distillation_loss/total
             sample_acc = 100.0 * sample_correct / total
             teacher_acc = 100.0 * teacher_correct / total
-            print("kldivloss",convert_tensor_to_float(kldivloss/total))
-            print("cross-entropy",convert_tensor_to_float(distillation_loss/total))
+            print("kldivloss",convert_tensor_to_float(kldivloss))
+            print("cross-entropy",convert_tensor_to_float(distillation_loss))
             print("DeleteIndex", delete_ind)
 
             print(

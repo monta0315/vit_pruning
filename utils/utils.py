@@ -249,7 +249,7 @@ def linear_regression(importance_score_lists):
 
     return y_loss_arr
 
-def test(model,device,name,checkpoint, pruned=False, cfg=None,method=1,strategy="all"):
+def test(model,device,name,checkpoint, pruned=False, cfg=None,method=1,strategy="all",cfg_mask=[]):
         transform_test = transforms.Compose(
             [
                 transforms.ToTensor(),
@@ -281,6 +281,8 @@ def test(model,device,name,checkpoint, pruned=False, cfg=None,method=1,strategy=
                 "acc": 100.0 * correct / total,
                 "epoch": checkpoint["epoch"],
                 "cfg": cfg,
+                "rate":sum(cfg)/(512*6),
+                "cfg_mask":cfg_mask
             }
             torch.save(state, f"./pruned{method}_checkpoints/self-pruned-{name}-{strategy}.pth".format(4))
             print("Complete!!!!!!!!!!!!!!!")
@@ -309,3 +311,16 @@ def get_select_values(ind):
                 sele_val.append(m.indexes.data.abs().clone())
 
     return sele_val[ind]
+
+def get_mask(name,layer_num=0):
+    checkpoint = torch.load(name, map_location="cpu")
+    
+    return  checkpoint["cfg_mask"][layer_num]
+
+def squeeze_channel(target,mask):
+    idx = np.squeeze(np.argwhere(np.asarray(mask.numpy())))
+    v = torch.Tensor(target).clone()
+
+    # ここの絞り込みがlistだとうまくいかないからTensorにしゃーなしでかえる
+    v = v[idx.tolist()].clone()
+    return v.tolist()

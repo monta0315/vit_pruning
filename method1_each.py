@@ -192,4 +192,4 @@ newmodel.load_state_dict(newmodel_dict)
 
 # torch.save(newmodel.state_dict(), 'pruned.pth')
 print("after pruning: ", end=" ")
-test(newmodel, device,name,checkpoint, True, cfg,1,"each")
+test(newmodel, device,name,checkpoint, True, cfg,1,"each",cfg_mask)
