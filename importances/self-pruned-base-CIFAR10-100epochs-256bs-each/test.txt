@@ -1,0 +1,262 @@
+\documentclass[twocolumn, a4paper]{ieicejsputf8}
+\usepackage[utf8]{inputenc}
+\usepackage[dvipdfmx]{graphicx}
+\usepackage{multirow}
+\usepackage{color}
+
+
+\begin{document}
+
+\title{\Large Vision Transformerを用いた画像分類モデルのアテンション機構の軽量化
+{\normalsize Lightweight Attention Module of Image Classification Model Using Vision Transformer}
+}
+\author{\Large 川井 智隆\dag \hspace*{1cm} 吉田 明正\dag\\
+Tomotaka Kawai\hspace*{1cm}Akimasa Yoshida\\[-12ex]
+}
+
+\maketitle
+
+\baselineskip 11.1pt
+
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+\footnotetext[2]{明治大学総合数理学部ネットワークデザイン学科\\
+\hspace*{1.5em} Department of Network Design, School of Interdisciplinary Mathematical Sciences, Meiji University}
+
+
+\section{はじめに}
+人工知能の研究も成熟し,実社会への適応が求められる段階になった.特に画像識別のタスクは汎用性も高く,社会の様々な場面で必要になる.ディープラーニングの世界では画像識別のモデルで最も一般的なものはCNNベースのモデルである.しかし,近年Transformerモデルの隆盛により画像識別界においてもVision TransformerモデルというTransformerベースの画像識別モデルが現れた.実際にVision Transformerは高性能であり,また,物体検出,セマンティックセグメンテーションといったタスクなどにも流用されている.しかし,その性能を発揮するためには計算機に対し,高い計算能力やランタイムメモリを要求する.実運用の際の上記のようなハードルを改善するためにモデル圧縮技術がある.\\本論文ではVisionTransformerモデルの各層におけるチャンネルの重要性を二つの観点から求め,より教師モデルのチャネルの分布の特性を引き継ぎながらチャネルの減量するモデル圧縮技術を提案する.提案手法のパイプラインは以下の通りである.(1)各チャネルの重要度スコアを2種類の知識蒸留の手法を用いて計算する.(2)計算した2種類の重要度スコアを元に,各チャネルの安定性を求める.(3)求めた安定性を元に教師モデルを刈り込む.提案手法の有効性を示すために,CIFAR-10データセット学習,推論し,削減されたパラメータと精度,推論速度,山パラメータ数の関係を示す.
+%\\　本論文ではVisionTransformerモデルの各Attention層におけるチャンネルの重要性を計算し,より精度を保ったままモデルの推論速度を向上させる手法の比較を示す.
+
+\section{VisionTransformer}
+本稿で利用する画像識別モデルと,一般的なモデル圧縮技術について説明する.
+
+\subsection{Vision Transformerモデル}
+Vision Transformer\cite{dosovitskiy2020image}とはで発表されたTransformerベースの画像分類モデルのことである.元々,Transformerは自然言語処理のタスクにおいてデファクトスタンダードの存在であり,そのTransformerを画像分類タスク用にしたものである.具体的には入力画像をいくつかのパッチに分割し,さらに位置情報(元の画像でどこにいたか)を追加したものを１つのトークンとし,TransformerのEncoderに与え,クラス分類を行う.Transformerベースのモデルは画像分類に限った話ではなく,物体検出タスク\cite{carion2020end},セマンティックセグメンテーションタスク\cite{strudel2021segmenter}など様々なタスクに応用されている.
+また,エンコーダ部分のアーキテクチャはTransformerと同じく,Attention機構というモジュールを何層も重ねている.本稿で利用するVisionTransformerモデルはこちら\cite{pytorch_visiontransformer}を参考にし,512次元のチャンネルを6層重ねるAttention機構を採用している.
+
+\subsection{モデル圧縮技術}
+機械学習のモデルを実社会運用する際に,モデルを実行するデバイスの性能に制限あることも多い.特にエッジデバイスでモデルを実行する際には,ランタイムメモリや計算資源の制限から特定のモデルが使用できない,十分な性能を発揮できない場面も考えられる.その際には利用するモデルを圧縮することで計算量やメモリ使用量を削減することエッジデバイスでの複雑なモデルの実行を実現する.\\　代表的なモデル圧縮技術として,枝刈り,知識蒸留,量子化がある.枝刈りはモデルのノードや重みを削除することでモデル内のパラメータ数を削除する手法である.知識蒸留は,より利用したいモデルのパラメータの確率分布を模倣したより小さいモデルを生成することを目的とした手法である.量子化はモデルのパラメータの精度を落とすことでメモリ使用量を下げる手法である.本稿では枝刈りをメインの圧縮技術として用いる.
+
+\section{重みと重要度スコアを考慮した枝刈り手法}
+本節ではVisionTransformerモデル\cite{pytorch_visiontransformer}を枝刈りする手法を紹介する.
+
+\subsection{重みによる枝刈り}
+重みによる枝刈りは,VisionTransformerの各Attention機構の最終層のチャンネルの重みの絶対値を小さいチャンネルから刈り取る\cite{zhu2021vision}.具体的には図\ref{fig:method1}のようになる.図\ref{fig:method1}はAttention機構1層目の各チャンネルの重みをx軸に後述する重要度スコアをy軸にし,重みによる枝刈りで50\%のチャンネルを刈り取った分布図である.青点が枝刈りによって削られたチャンネルである.重みの大小を基準にするため,わかりやすく左側半分が削られていることがわかる.
+
+\subsection{重要度スコアによる枝刈り}
+モデル圧縮技術の知識蒸留を利用し,VisionTransformerモデル\cite{pytorch_visiontransformer}の各Attention機構の各チャンネルの重要度を算出し,その値を元に刈り込む.重要度は教師モデルと生徒モデルの蒸留損失を利用する.損失蒸留を式\ref{impotance_score}に定義する\cite{yu2021unified}.
+\begin{equation}
+\label{impotance_score}
+L = L_{CE}(y,p) + {\alpha}L_{KL}(q,p)
+\end{equation}
+${L}_{CE}$はクロスエントロピー誤差のことで,$y$は正解ラベルで,$p$は生徒モデルの出力確率をを表している.また,${L}_{KL}$はカルバック・ライブラー情報量を表しており,${q}$は教師モデルの出力確率を表す.また,$\alpha$の値は\cite{yu2021unified}を参照している.
+\\　重要度スコアによる枝刈りは具体的には図\ref{fig:method2}のようになる.図\ref{fig:method2}はAttention機構1層目の各チャンネルの重みをx軸に後述する重要度スコアをy軸にし,重要度スコアによる枝刈りで50\%のチャンネルを刈り取った分布図である.青点が枝刈りによって削られたチャンネルである.重要度による枝刈りの手法は教師モデルのチャンネルの分布と生徒モデルのチャンネルの分布との差を最小にするように式\ref{impotance_score}で定義した重要度スコアを利用して,刈り取るチャンネルを選択する.そのため,図\ref{fig:method1}とは違い,刈り取る対象の青点は刈り取る前のチャンネルの分布に近くなるように選択されている.
+
+\begin{figure}
+\begin{minipage}[b]{0.45\linewidth}
+\centering
+\includegraphics[width=4cm]{method1.eps}
+\caption{重みによる枝刈り(50\%).}
+\label{fig:method1}
+\end{minipage}
+\begin{minipage}[b]{0.45\linewidth}
+\centering
+\includegraphics[width=4cm]{method2.eps}
+\caption{重要度スコアによる枝刈り(50\%).}
+\label{fig:method2}
+\end{minipage}
+\end{figure}
+
+\subsection{刈り込みチャンネル対象の範囲}
+Transformerのアーキテクチャ上,複数のAttention層が存在するため,各Attention層毎に刈り込むチャンネルを選択するか,各Atttention層をまとめて刈り込むチャンネルを選択するかの2通りが考えられる.\\　例えば,本稿で利用する512チャンネルを持つAttention機構が6層重なったTransformerモジュールを刈り込む場合,重みによる枝刈りでも重要度スコアによる枝刈りでも512x6の3072種類のスコアで刈り込むチャンネルを選択する.仮に40\%のチャンネルを刈り込む場合,3072個全部のスコアを同時に比較する場合,各層のAttention機構のチャンネル数は刈り込み後は必ずしも一致しない.対照的に,各Attention機構の層毎,つまり512チャンネル毎に40\%の刈り込みを行う場合,各層のAttention機構のチャンネル数は等しく40\%ずつ刈り込まれる.この二つの刈り込みチャンネル対象の選択範囲の方法も重みと重要度スコアによる枝刈りに対して適応する.
+
+\subsection{提案手法}
+上記で説明した手法二つを利用し,より効果的な重要度スコアによる枝刈り手法を提案する.式\ref{impotance_score}では係数$\alpha$を利用して${L}_{CE}$と${L}_{KL}$の両方を利用している.本手法ではこの点に着目し,二つの蒸留損失のより良い利用方法の観点として安定性を考えた.具体的には${L}_{CE}$と${L}_{KL}$は各チャンネルごとに計算をしているため,二つの蒸留損失は同じほどの重要度を示すべきであると考えた.そこで,どちらかの蒸留損失が示す重要度に差があるほど安定性が低いと考え,これを重要度スコアに反映するために${L}_{CE}$と${L}_{KL}$にて単回帰分析を行い,各チャンネルの推定値と実際値の誤差で重要度スコアを調整する.上記を式\ref{impotance_score_2}に定義する.
+
+\begin{equation}
+\label{impotance_score_2}
+L = L_{CE}(y,p) - |\hat{y} - y| 
+\end{equation}
+
+\begin{figure}
+\begin{minipage}[b]{0.45\linewidth}
+\centering
+\includegraphics[width=4cm]{method3_scatter.eps}
+\caption{${L}_{CE}$と${L}_{KL}$による散布図.}
+\label{fig:method1}
+\end{minipage}
+\begin{minipage}[b]{0.45\linewidth}
+\centering
+\includegraphics[width=4cm]{method3_map.eps}
+\caption{提案手法による枝刈り(50\%).}
+\label{fig:method2}
+\end{minipage}
+\end{figure}
+
+\section{VisionTransformerモデル軽量化の性能評価}
+本節では,VisionTransformerモデルのAttention機構に対する重みによる枝刈りと重要度スコアによる枝刈りを適用し,刈り込み率とモデルの精度,推論速度,パラメータ量の推移を確認する.また,推論速度検証環境は以下の通りである.
+
+\subsection{CIFAR-10データセット}
+データセットにはCIFAR10を利用し,ベースのVisionTransformerモデルには\cite{pytorch_visiontransformer}を利用する.
+提案手法の評価においては，Intel Xeon 2265 3.50GHz 12コア，128GBメモリ，NVIDIA Quadro RTX6000を使用した.
+また,精度はTop-1 accuracyとする.
+
+\subsection{モデル軽量化による精度と推論速度,パラメータ量}
+表\ref{tab:tab1}では文献\cite{pytorch_visiontransformer}を30--70\%の範囲で各手法と範囲でAttention機構部分を枝刈りした結果を示す.推論速度は画像1000枚をCPUで推論するのに要する時間である.
+結果としては,重みを基準とした枝刈りを全体を範囲として行ったモデルと重要度スコアを基準とした枝刈りを全体を範囲として行ったモデルの優位が半分ずつといった形となった.
+
+\begin{table}[t]
+\small{
+\caption {刈り込み手法と刈り込み割合と精度.}
+\begin{center}
+\begin{tabular}{l| r | r | r | r | r} \hline \hline
+精度 & \multicolumn{5}{c}{刈り込み割合} \\ \hline 
+枝刈り手法 & 30\% & 40\% & 50\% & 60\% & 70\% \\\hline
+重み(一律) & 73.73 & 66.37 & 56.79 & 46.95 & 27.87 \\ \hline
+重み(全体) & 73.51 & 68.52 & \color{red}63.11 & \color{red}51.53 & \color{red}38.72 \\ \hline
+重要度(一律) & 71.43 & 64.71 & 56.67 & 46.28 & 34.26 \\ \hline
+重要度(全体) & 70.45 & 64.45 & 55.89 & 46.19 & 34.10 \\ \hline
+提案手法 & \color{red}74.70 & \color{red}68.77 & 58.13 & 43.32 & 31.02 \\ \hline
+\multicolumn{5}{l}{※単位は$\%$．}
+\end{tabular}
+\end{center}
+}
+\label{tab:tab1}
+\end{table}
+
+\begin{table}[t]
+\small{
+\caption {刈り込み手法と刈り込み割合と推論速度.}
+\begin{center}
+\begin{tabular}{l|r | r | r | r | r} \hline \hline
+推論時間 & \multicolumn{5}{c}{刈り込み割合} \\ \hline 
+枝刈り手法 & 30\% & 40\% & 50\% & 60\% & 70\% \\\hline
+元モデル & \multicolumn{5}{c}{8257.53ms　　↓0\%} \\ \hline
+重み(一律) 
+& \begin{tabular}{r@{}r@{}}7588.70 \\  ↓8.10\end{tabular} 
+& \begin{tabular}{r@{}r@{}}7756.06 \\  ↓6.07\end{tabular} 
+& \begin{tabular}{r@{}r@{}}7420.79 \\  ↓10.13\end{tabular} 
+& \begin{tabular}{r@{}r@{}}7233.90 \\  ↓12.40\end{tabular} 
+& \begin{tabular}{r@{}r@{}}6884.52 \\  ↓16.63\end{tabular} \\ \hline
+重み(全体) 
+& \begin{tabular}{r@{}r@{}}\color{red}7427.59 \\  ↓10.05\end{tabular} 
+& \begin{tabular}{r@{}r@{}}7250.08 \\  ↓12.20\end{tabular} 
+& \begin{tabular}{r@{}r@{}}7170.44 \\  ↓13.16\end{tabular} 
+& \begin{tabular}{r@{}r@{}}7016.61 \\  ↓15.03\end{tabular} 
+& \begin{tabular}{r@{}r@{}}\color{red}6754.16 \\  ↓18.21\end{tabular} \\ \hline
+重要度(一律) 
+& \begin{tabular}{r@{}r@{}}7598.22 \\  ↓7.98\end{tabular}
+& \begin{tabular}{r@{}r@{}}7358.15 \\  ↓10.89\end{tabular} 
+& \begin{tabular}{r@{}r@{}}7192.04 \\  ↓12.90\end{tabular} 
+& \begin{tabular}{r@{}r@{}}7088.89 \\  ↓14.15\end{tabular} 
+& \begin{tabular}{r@{}r@{}}7073.34 \\  ↓14.34\end{tabular} \\ \hline
+重要度(全体) 
+& \begin{tabular}{r@{}r@{}}7440.94 \\  ↓9.89\end{tabular} 
+& \begin{tabular}{r@{}r@{}}\color{red}7193.14 \\  ↓12.89\end{tabular} 
+& \begin{tabular}{r@{}r@{}}\color{red}7107.77 \\  ↓13.92\end{tabular}
+& \begin{tabular}{r@{}r@{}}\color{red}6998.88 \\  ↓15.24\end{tabular}
+& \begin{tabular}{r@{}r@{}}6840.44 \\  ↓17.16\end{tabular} \\ \hline
+提案手法
+& \begin{tabular}{r@{}r@{}}7164.36 \\  ↓13.24\end{tabular} 
+& \begin{tabular}{r@{}r@{}}\color{red}6969.38 \\  ↓15.60\end{tabular} 
+& \begin{tabular}{r@{}r@{}}\color{red}6809.11 \\  ↓17.54\end{tabular}
+& \begin{tabular}{r@{}r@{}}\color{red}6704.02 \\  ↓18.81\end{tabular}
+& \begin{tabular}{r@{}r@{}}6840.44 \\  ↓17.16\end{tabular} \\ \hline
+\multicolumn{5}{l}{※単位は$ms$．}
+\end{tabular}
+\end{center}
+}
+\label{tab:tab2}
+\end{table}
+
+\begin{table}[t]
+\small{
+\caption {刈り込み手法と刈り込み割合とモデルの残パラメータ量.}
+\begin{center}
+\begin{tabular}{l|r | r | r | r | r} \hline \hline
+パラメータ数 & \multicolumn{5}{c}{刈り込み割合} \\ \hline 
+枝刈り手法 & 30\% & 40\% & 50\% & 60\% & 70\% \\\hline
+元モデル & \multicolumn{5}{c}{35,367,731 bytes(35.367731 KB)　　↓0\%} \\ \hline
+重み(一律) 
+& \begin{tabular}{r@{}r@{}}28.312 \\  ↓19.97\end{tabular} 
+& \begin{tabular}{r@{}r@{}}28.189 \\  ↓25.82\end{tabular} 
+& \begin{tabular}{r@{}r@{}}23.810 \\  ↓32.70\end{tabular} 
+& \begin{tabular}{r@{}r@{}}21.254 \\  ↓39.93\end{tabular} 
+& \begin{tabular}{r@{}r@{}}18.577 \\  ↓47.50\end{tabular} \\ \hline
+重み(全体) 
+& \begin{tabular}{r@{}r@{}}28.189 \\  ↓20.31\end{tabular} 
+& \begin{tabular}{r@{}r@{}}25.938 \\  ↓26.68\end{tabular} 
+& \begin{tabular}{r@{}r@{}}23.748 \\  ↓32.87\end{tabular} 
+& \begin{tabular}{r@{}r@{}}21.253 \\  ↓39.93\end{tabular} 
+& \begin{tabular}{r@{}r@{}}19.002 \\  ↓46.30\end{tabular} \\ \hline
+重要度(一律) 
+& \begin{tabular}{r@{}r@{}}28.431 \\  ↓19.62\end{tabular}
+& \begin{tabular}{r@{}r@{}}26.241 \\  ↓25.82\end{tabular} 
+& \begin{tabular}{r@{}r@{}}23.686 \\  ↓33.05\end{tabular} 
+& \begin{tabular}{r@{}r@{}}21.496 \\  ↓39.24\end{tabular} 
+& \begin{tabular}{r@{}r@{}}19.306 \\  ↓45.44\end{tabular} \\ \hline
+重要度(全体) 
+& \begin{tabular}{r@{}r@{}}28.552 \\  ↓19.28\end{tabular} 
+& \begin{tabular}{r@{}r@{}}26.119 \\  ↓26.16\end{tabular} 
+& \begin{tabular}{r@{}r@{}}23.867 \\  ↓32.53\end{tabular}
+& \begin{tabular}{r@{}r@{}}21.495 \\  ↓39.24\end{tabular}
+& \begin{tabular}{r@{}r@{}}19.243 \\  ↓45.61\end{tabular} \\ \hline
+\multicolumn{5}{l}{※単位は$KB$．}
+\end{tabular}
+\end{center}
+}
+\label{tab:tab3}
+\end{table}
+
+\section{おわりに}
+本稿ではVisionTransformerモデルに対する2種類の枝刈り手法を比較した．CIFAR-10のデータセットにおける学習済モデルの枝刈りの結果，各Attention機構の全結合層のチャンネルの重みを基準に枝刈りをする手法,かつ枝刈りする際に全Attention機構のチャンネルの重みをまとめて比較した際のモデルがよい結果が得られた．2\％よかった．
+これらの結果から，提案する枝刈り手法の有効性が確認された．
+
+{\small \baselineskip 9.1pt
+\begin{thebibliography}{10}
+\bibitem{zhu2021vision}
+Zhu, Mingjian and Tang, et al.
+\newblock Vision transformer 枝刈り，
+\newblock arXiv preprint arXiv:2104.08500 2021.
+
+\bibitem{yu2021unified}
+Yu, Hao and Wu, Jianxin．
+\newblock A unified pruning framework for vision transformers，
+\newblock arXiv preprint arXiv:2111.15127 2021．
+
+\bibitem{dosovitskiy2020image}
+Dosovitskiy, Alexey and Beyer, et al．
+\newblock An image is worth 16x16 words: Transformers for image recognition at scale，
+\newblock arXiv preprint arXiv:2010.11929 2020．
+
+\bibitem{carion2020end}
+Carion, Nicolas and Massa, et al．
+\newblock End-to-end object detection with transformers，
+\newblock European conference on computer vision 213--229 2020 Springer．
+
+\bibitem{strudel2021segmenter}
+Strudel, Robin and Garcia, et al．
+\newblock Segmenter: Transformer for semantic segmentation,
+\newblock Proceedings of the IEEE/CVF International Conference on Computer Vision 7262--7272，2021.
+
+\bibitem{pytorch_visiontransformer}
+Phil Wang ．
+\newblock vit-pytorch,
+\newblock \\ \url{https://github.com/lucidrains/vit-pytorch/blob/main/vit\_pytorch/vit.py}.
+\end{thebibliography}
+
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+

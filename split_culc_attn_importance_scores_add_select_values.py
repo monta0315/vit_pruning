@@ -50,7 +50,9 @@ args = parser.parse_args()
 u = Utility("base")
 
 # if want to use pruned model select second return value
-base_path,_ = u.get_model_path()
+# base_path,_ = u.get_model_path()
+# for useing same method1
+base_path = "pruned1_checkpoints/self-pruned-newest-CIFAR10-100epochs-256bs-each-1.0.pth"
 strategy = u.strategy
 name = u.get_name()
 
@@ -193,6 +195,7 @@ for delete_ind in candidate_index:
             end = time.time()
             kldiv = nn.KLDivLoss(reduction="sum")
             kldivloss = 0
+            lce = 0
             distillation_loss = 0
             for i, (images, target) in enumerate(testloader):
                 with autocast():
@@ -213,14 +216,18 @@ for delete_ind in candidate_index:
                     logsoftmax = nn.LogSoftmax(dim=1).cuda()
                     softmax = nn.Softmax(dim=1).cuda()
                     kldivloss += kldiv(logsoftmax(output),softmax(teacher_output))
+                    lce += F.cross_entropy(output,target) 
+
                     distillation_loss += (F.cross_entropy(output,target) + F.cross_entropy(output,teacher_predicted))/2
             
             #kldivloss = kldivloss/total
             #distillation_loss = distillation_loss/total
             sample_acc = 100.0 * sample_correct / total
             teacher_acc = 100.0 * teacher_correct / total
+            method2_importance_score = lce+0.4*kldivloss
             print("kldivloss",convert_tensor_to_float(kldivloss))
             print("cross-entropy",convert_tensor_to_float(distillation_loss))
+            print("method2_importance_score",method2_importance_score)
             print("DeleteIndex", delete_ind)
 
             print(
@@ -236,8 +243,8 @@ for delete_ind in candidate_index:
         batch_time.update(time.time() - end)
         end = time.time()
 
-        importance.append([convert_tensor_to_float(kldivloss),convert_tensor_to_float(distillation_loss) ,delete_ind])
-        print("kl",convert_tensor_to_float(kldivloss),"ce",convert_tensor_to_float(distillation_loss),"delete_ind", delete_ind,"select_value",convert_tensor_to_float(select_values[delete_ind]))
+        importance.append([convert_tensor_to_float(kldivloss),convert_tensor_to_float(distillation_loss) ,delete_ind,convert_tensor_to_float(method2_importance_score)])
+        print("kl",convert_tensor_to_float(kldivloss),"ce",convert_tensor_to_float(distillation_loss),"delete_ind", delete_ind,"select_value",convert_tensor_to_float(select_values[delete_ind]),"method2_score",convert_tensor_to_float(method2_importance_score))
 if not os.path.isdir("importances"):
     os.makedirs("importances")
 
@@ -247,7 +254,7 @@ if not os.path.isdir(f"importances/self-pruned-{name}-{strategy}"):
 with open(
     f"importances/self-pruned-{name}-{strategy}/block_{args.block_ind}-test2.txt", "w"
 ) as f:
-    for kl, ce,ind in importance:
-        f.write(str(ind) +","+str(kl) +","+str(ce)+","+str(convert_tensor_to_float(select_values[ind]))+"\n")
+    for kl,ce,ind,method2 in importance:
+        f.write(str(ind) +","+str(kl) +","+str(ce)+","+str(convert_tensor_to_float(select_values[ind]))+","+str(convert_tensor_to_float(method2))+"\n")
 
 

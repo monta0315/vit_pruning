@@ -7,8 +7,10 @@ import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as transforms
 
-parser = argparse.ArgumentParser(description="which model use")
+parser = argparse.ArgumentParser(description="PyTorch CIFAR10 Training")
+parser.add_argument("--rate", default=0.3, type=float, help="Resolution size")
 args = parser.parse_args()
+threshould = args.rate+0.02
 
 
 from models.attn_importance_split_slim import ViT as attn_ViT
@@ -68,7 +70,6 @@ print(
 """
 
 # 重みが小さいものの下から3割のindexを判明させている
-percent = 0.4
 pruned = 0
 cfg = []
 cfg_mask = []
@@ -80,7 +81,7 @@ cfg_mask = []
 def culc_thre(tensor:torch.Tensor)->torch.Tensor:
     cp = tensor.clone()
     cp,_ = torch.sort(cp)
-    thre_index = int(len(cp)*percent)
+    thre_index = int(len(cp)*threshould)
     return cp[thre_index-1]
 
 
@@ -192,4 +193,4 @@ newmodel.load_state_dict(newmodel_dict)
 
 # torch.save(newmodel.state_dict(), 'pruned.pth')
 print("after pruning: ", end=" ")
-test(newmodel, device,name,checkpoint, True, cfg,1,"each",cfg_mask)
+test(newmodel, device,name,checkpoint, True, cfg,1,"each-last",cfg_mask)

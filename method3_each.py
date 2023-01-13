@@ -22,7 +22,7 @@ model_path = f"ch_sele_checkpoints/{name}.pth"
 block_ind = 0
 
 importance_score = []
-threshould = 0.40
+threshould = 0.6
 pruned_target_index = []
 
 device = "cuda" if torch.cuda.is_available() else "cpu"

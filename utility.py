@@ -2,19 +2,26 @@ import torch
 
 #from models.slim_split import ViT_slim
 from models.attn_importance_split_slim import ViT as ViT_slim
-from models.select_split import ViT
+#from models.select_split import ViT
+from models.split_vit import ViT
 
 
 class Utility():
-    def __init__(self,name="newest",name2=None,strategy="each"):
+    def __init__(self,name="newest",name2=None,strategy="each",rate="0.4"):
         self.cfg = f"CIFAR10-100epochs-256bs"
         self.first_cfg = f"CIFAR10-100epochs-256bs"
         self.name = f"{name}-{self.cfg}"
         self.first_name = f"{name}-{self.first_cfg}"
-        self.model_path = f"ch_sele_checkpoints/{name}-{self.cfg}.pth"
-        self.pruned_model_path = f"pruned1_checkpoints/self-pruned-{name}-{self.cfg}.pth"
-        self.pruned_2_1_model_path = f"pruned2_checkpoints/self-pruned-{name}-{self.cfg}.pth"
-        self.pruned_2_2_model_path = f"pruned2_checkpoints/self-pruned-{name}-{self.cfg}-all.pth"
+        #self.model_path = f"ch_sele_checkpoints/{name}-{self.cfg}.pth"
+        self.model_path = f"pruned1_checkpoints/self-pruned-newest-CIFAR10-100epochs-256bs-each-1.0.pth"
+        #self.pruned_model_path = f"pruned1_checkpoints/self-pruned-{name}-{self.cfg}.pth"
+        self.pruned_model_path = f"pruned1_checkpoints/self-pruned-newest-CIFAR10-100epochs-256bs-all-0.3.pth"
+        #self.pruned_2_1_model_path = f"pruned2_checkpoints/self-pruned-{name}-{self.cfg}.pth"
+        self.pruned_2_1_model_path = f"pruned3_checkpoints/self-pruned-base-CIFAR10-100epochs-256bs-each-test-last-{rate}.pth"
+        #self.pruned_2_1_model_path = f"pruned2_checkpoints/self-pruned-base-CIFAR10-100epochs-256bs-each-test-each-{rate}.pth"
+        #self.pruned_2_2_model_path = f"pruned2_checkpoints/self-pruned-{name}-{self.cfg}-all.pth"
+        self.pruned_2_2_model_path = f"pruned1_checkpoints/self-pruned-newest-CIFAR10-100epochs-256bs-all-{rate}.pth"
+        #self.pruned_2_2_model_path = f"pruned3_checkpoints/self-pruned-base-CIFAR10-100epochs-256bs-each-test-all-{rate}.pth"
         self.strategy = strategy
 
 
@@ -59,6 +66,8 @@ class Utility():
     def get_model_for_comparing_two_pruned(self):
         pruned_2_1_checkpoint = torch.load(self.pruned_2_1_model_path)
         pruned_2_2_checkpoint = torch.load(self.pruned_2_2_model_path)
+        print("each",pruned_2_1_checkpoint['cfg'],pruned_2_1_checkpoint['rate'])
+        print("all",pruned_2_2_checkpoint['cfg'],pruned_2_2_checkpoint['rate'])
         pruned_2_1_model = ViT_slim(
             image_size = 32,
             patch_size = 4,

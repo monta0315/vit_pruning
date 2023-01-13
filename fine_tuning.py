@@ -98,6 +98,8 @@ classes = (
 checkpoint = torch.load(args.model_path,map_location="cpu")
 cfg = checkpoint["cfg"]
 
+print("==> Target model..",args.model_path,"Former Acc",checkpoint["acc"])
+
 print("==> Building model..")
 
 net = ViT(

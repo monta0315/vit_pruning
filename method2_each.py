@@ -1,3 +1,4 @@
+import argparse
 import os
 
 import numpy as np
@@ -12,6 +13,11 @@ from utility import Utility
 from utils.utils import (linear_regression, progress_bar, test,
                          txt_impotance_scores_convert_array)
 
+parser = argparse.ArgumentParser(description="PyTorch CIFAR10 Training")
+parser.add_argument("--rate", default=0.3, type=float, help="Resolution size")
+args = parser.parse_args()
+threshould = args.rate
+
 u = Utility("base")
 #name = u.get_name()
 name = "base-CIFAR10-100epochs-256bs"
@@ -22,7 +28,6 @@ model_path = f"ch_sele_checkpoints/{name}.pth"
 block_ind = 0
 
 importance_score = []
-threshould = 0.40
 pruned_target_index = []
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -48,16 +53,20 @@ def make_mask(score_lists):
     for list in score_lists:
         size = len(list)
         copy = list.copy()
-        #copy.sort()
-        copy.sort(reverse=True)
+        copy.sort()
+        #for reverse
+        #copy.sort(reverse=True)
+        print(copy)
         target = torch.FloatTensor(list)
         thre_index = int(size*threshould)
         while (size-thre_index) % 8 != 0:
             thre_index = thre_index - 1
         thre_value = copy[thre_index - 1]
         # gt => "a > b" lt => "a < b"
-        step = target.lt(thre_value)
-        #step = target.gt(thre_value)
+        #for reverse
+        #step = target.lt(thre_value)
+        step = target.gt(thre_value)
+        
         cfg_mask.append(step)
         cfg.append(size-thre_index)
     
@@ -68,16 +77,18 @@ def make_mask(score_lists):
 
 # get importance scores => [index,soft,hard]*512
 # method 3
-name = "base-CIFAR10-100epochs-256bs-each-test"
+name = "base-CIFAR10-100epochs-256bs-each"
 for i in range(6):
     step = txt_impotance_scores_convert_array(name,i)
     # only method3
     # step = linear_regression(step)
     # if select hard,step[2]
-    importance_score.append(step[1])
+    importance_score.append(step[4])
 
 
 # threshoud_importance_score(importance_score)
+
+model_path = "pruned1_checkpoints/self-pruned-newest-CIFAR10-100epochs-256bs-each-1.0.pth"
 
 checkpoint = torch.load(model_path,map_location="cpu")
 
@@ -147,6 +158,7 @@ for dim in range(6):
         new_dict[l] = v[idx.tolist()].clone()
 
     l = f"transformer.layers.{dim}.0.fn.attn_to_out.0.weight"
+    # cfg_maskのfalseを消す
     idx = np.squeeze(np.argwhere(np.asarray(cfg_mask[dim].cpu().numpy())))
     v = new_dict[l].clone()
     new_dict[l] = v[:, idx.tolist()].clone()
@@ -158,6 +170,6 @@ new_model_dict.update(new_dict)
 
 new_model.load_state_dict(new_model_dict)
 
+print(f"pruned_ratio:{100-sum(cfg)*100/(512*6)}%")
 
-
-test(new_model,device,name,checkpoint,True,cfg,2,"each",cfg_mask)
+test(new_model,device,name,checkpoint,True,cfg,2,"each-last",cfg_mask)

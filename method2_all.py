@@ -1,3 +1,4 @@
+import argparse
 import copy
 import os
 
@@ -13,6 +14,11 @@ from utility import Utility
 from utils.utils import (linear_regression, progress_bar, test,
                          txt_impotance_scores_convert_array)
 
+parser = argparse.ArgumentParser(description="PyTorch CIFAR10 Training")
+parser.add_argument("--rate", default=0.3, type=float, help="Resolution size")
+args = parser.parse_args()
+threshould = args.rate
+
 u = Utility("base")
 # name = u.get_name()
 name = "base-CIFAR10-100epochs-256bs"
@@ -21,7 +27,6 @@ _,model_path = u.get_model_path()
 block_ind = 0
 
 importance_score_lists = []
-threshould = 0.40
 pruned_target_index = []
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -49,8 +54,9 @@ def make_mask(score_lists,all_importance_score):
         threshoud_importance_score_ = copy.copy(threshoud_importance_score)
         while sum(i > threshoud_importance_score_ for i in list) % 8 != 0:
             threshoud_importance_score_ -= 0.001
-        step = list.lt(threshoud_importance_score_)
-        #step = list.gt(threshoud_importance_score_)
+        # for reverse
+        # step = list.lt(threshoud_importance_score_)
+        step = list.gt(threshoud_importance_score_)
         cfg_mask.append(step)
         cfg.append(int(step.sum()))
     
@@ -58,30 +64,31 @@ def make_mask(score_lists,all_importance_score):
 
 def culc_threshoud_importance_score(all_importance_score) -> float:
     all_importance_score.sort()
-    all_importance_score = all_importance_score[::-1]
-    #all_importance_score.sort()
+    # for reverse
+    #all_importance_score = all_importance_score[::-1]
     thre_index = int(len(all_importance_score)*threshould)
     return all_importance_score[thre_index - 1]
 
 
 
 all_importance_score = []
-
+name = "base-CIFAR10-100epochs-256bs-each"
 for i in range(6):
     step = txt_impotance_scores_convert_array(name,i)
     # only method3
     # step = linear_regression(step)
     # if select hard,step[2]
-    importance_score_lists.append(step[1])
+    importance_score_lists.append(step[4])
 
 all_importance_score = np.array(importance_score_lists).flatten()
 
 # threshoud_importance_score(importance_score)
 
 # if apply only method2 
-model_path = f"ch_sele_checkpoints/{name}.pth"
+model_path = "pruned1_checkpoints/self-pruned-newest-CIFAR10-100epochs-256bs-each-1.0.pth"
 
 checkpoint = torch.load(model_path,map_location="cpu")
+
 base_model = base(    
     image_size=32,
     patch_size=4,
@@ -162,5 +169,6 @@ new_model_dict.update(new_dict)
 
 new_model.load_state_dict(new_model_dict)
 
+print(f"pruned_ratio:{100-sum(cfg)*100/(512*6)}%")
 
-test(new_model,device,name,checkpoint,True,cfg,3,"all")
+test(new_model,device,name,checkpoint,True,cfg,2,"all-last",cfg_mask)

@@ -13,7 +13,7 @@ from models.slim_split import channel_selection
 #from models.select_split import ViT, channel_selection
 #from models.slim_split import ViT_slim as ViT
 from models.split_vit import ViT
-from utils.utils import progress_bar
+from utils.utils import AverageMeter, progress_bar
 
 # parsers
 parser = argparse.ArgumentParser(description="PyTorch CIFAR10 Training")

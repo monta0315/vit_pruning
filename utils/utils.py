@@ -210,13 +210,15 @@ def txt_impotance_scores_convert_array(name,ind):
         soft = []
         hard = []
         value = []
+        method2_score = []
         if not isempty:
             for i in f:
-                index,soft_score,hard_score,v = i[:-1].split(',')
+                index,soft_score,hard_score,v,method2 = i[:-1].split(',')
                 ind_arr.append(index)
                 soft.append(float(soft_score))
                 hard.append(float(hard_score))
                 value.append(float(v))
+                method2_score.append(float(method2))
         else:
             print(f"block_{i} is empty file")
         
@@ -224,8 +226,9 @@ def txt_impotance_scores_convert_array(name,ind):
         importance_score_lists.append(soft)
         importance_score_lists.append(hard)
         importance_score_lists.append(value)
+        importance_score_lists.append(method2_score)
 
-        #return [512,512,512,512]
+        #return [512,512,512,512,512]
 
     return importance_score_lists
 
@@ -287,15 +290,27 @@ def test(model,device,name,checkpoint, pruned=False, cfg=None,method=1,strategy=
 
             print("Acc: %.3f%% (%d/%d)" % (100.0 * correct / total, correct, total))
         if pruned:
+            rate = 1-sum(cfg)/(512*6)
+            formated_rate = '{:.1f}'.format(rate)
             state = {
                 "net": model.state_dict(),
                 "acc": 100.0 * correct / total,
                 "epoch": checkpoint["epoch"],
                 "cfg": cfg,
-                "rate":sum(cfg)/(512*6),
+                "rate":rate,
                 "cfg_mask":cfg_mask
             }
-            torch.save(state, f"./pruned{method}_checkpoints/self-pruned-{name}-{strategy}.pth".format(4))
+            torch.save(state, f"./pruned{method}_checkpoints/self-pruned-{name}-{strategy}-{formated_rate}.pth".format(4))
+            print("Saved model name",f"./pruned{method}_checkpoints/self-pruned-{name}-{strategy}-{formated_rate}.pth".format(4))
+
+            if not os.path.isdir("results"):
+                os.makedirs("results")
+            
+            with open(
+                f"results/self-pruned-{method}-{name}-{strategy}-{formated_rate}.txt","w"
+            )as f:
+                f.write(f"accuracy:{100.0 * correct / total},cfg:{cfg},rate:{rate}")
+
             print("Complete!!!!!!!!!!!!!!!")
 
 def get_select_values(ind):
