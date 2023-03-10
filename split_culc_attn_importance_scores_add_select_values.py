@@ -188,6 +188,7 @@ for delete_ind in candidate_index:
     if evaluate:
         with torch.no_grad():
             net.eval()
+            teacher_model.eval()
             sample_correct = 0
             teacher_correct = 0
             total = 0
@@ -195,7 +196,7 @@ for delete_ind in candidate_index:
             end = time.time()
             kldiv = nn.KLDivLoss(reduction="sum")
             kldivloss = 0
-            lce = 0
+            cel = 0
             distillation_loss = 0
             for i, (images, target) in enumerate(testloader):
                 with autocast():
@@ -216,7 +217,7 @@ for delete_ind in candidate_index:
                     logsoftmax = nn.LogSoftmax(dim=1).cuda()
                     softmax = nn.Softmax(dim=1).cuda()
                     kldivloss += kldiv(logsoftmax(output),softmax(teacher_output))
-                    lce += F.cross_entropy(output,target) 
+                    cel += F.cross_entropy(output,target) 
 
                     distillation_loss += (F.cross_entropy(output,target) + F.cross_entropy(output,teacher_predicted))/2
             
@@ -224,7 +225,7 @@ for delete_ind in candidate_index:
             #distillation_loss = distillation_loss/total
             sample_acc = 100.0 * sample_correct / total
             teacher_acc = 100.0 * teacher_correct / total
-            method2_importance_score = lce+0.4*kldivloss
+            method2_importance_score = cel+0.4*kldivloss
             print("kldivloss",convert_tensor_to_float(kldivloss))
             print("cross-entropy",convert_tensor_to_float(distillation_loss))
             print("method2_importance_score",method2_importance_score)

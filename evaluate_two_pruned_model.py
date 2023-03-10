@@ -49,19 +49,17 @@ class Evaluate:
         first_pruned_model,second_pruned_model = self.first_pruned_model,self.second_pruned_model
         img = self.get_img()
 
-        """ with torch.autograd.profiler.profile(use_cuda=False) as prof1:
+        with torch.autograd.profiler.profile(use_cuda=False) as prof1:
             for _ in range(inference_times):
-                out = base_model(img) """
+                out = base_model(img)
 
-        with torch.autograd.profiler.profile(use_cuda=False) as prof2:
+        with torch.autograd.profiler.profile(use_cuda=True) as prof2:
             for _ in range(inference_times):
                 out = first_pruned_model(img)
         
-        with torch.autograd.profiler.profile(use_cuda=False) as prof3:
+        with torch.autograd.profiler.profile(use_cuda=True) as prof3:
             for _ in range(inference_times):
                 out = second_pruned_model(img)
-        
-        prof1_self_cpu_time_total = 8257530
     
 
         #print("original model: {:.2f}ms".format(prof1.self_cpu_time_total/1000))
@@ -69,11 +67,11 @@ class Evaluate:
 
         df = pd.DataFrame({'Model': ['original model','pruned only second method model','pruned combine model']})
         df = pd.concat([df, pd.DataFrame([
-                ["{:.2f}ms".format((prof1_self_cpu_time_total)/1000),"{:.2f}ms".format((prof1_self_cpu_time_total)/inference_times/1000), "0%"],
+                ["{:.2f}ms".format((prof1.self_cpu_time_total)/1000),"{:.2f}ms".format((prof1.self_cpu_time_total)/inference_times/1000), "0%"],
                 ["{:.2f}ms".format((prof2.self_cpu_time_total)/1000),"{:.2f}ms".format((prof2.self_cpu_time_total)/inference_times/1000),
-                "{:.2f}%".format((prof1_self_cpu_time_total-prof2.self_cpu_time_total)/prof1_self_cpu_time_total*100)],
+                "{:.2f}%".format((prof1.self_cpu_time_total-prof2.self_cpu_time_total)/prof1.self_cpu_time_total*100)],
                 ["{:.2f}ms".format((prof3.self_cpu_time_total)/1000),"{:.2f}ms".format((prof3.self_cpu_time_total)/inference_times/1000),
-                "{:.2f}%".format((prof1_self_cpu_time_total-prof3.self_cpu_time_total)/prof1_self_cpu_time_total*100)]            
+                "{:.2f}%".format((prof1.self_cpu_time_total-prof3.self_cpu_time_total)/prof1.self_cpu_time_total*100)]            
             ],
             columns=[f'{inference_times} Inference','Ave Inference', 'Reduction'])], axis=1)
         
@@ -150,7 +148,7 @@ class Evaluate:
 
 e = Evaluate()
 print("==> Comparing inference speed..")
-e.comparing_inference_speed(1000)
+e.comparing_inference_speed(50)
 print("==> Comparing accuracy..")
 e.comparing_accuracy()
 print("==> Comparing model size..")
